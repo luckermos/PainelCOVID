@@ -9,9 +9,9 @@ Para reproduzir nosso painél em sua máquina certifique-se de ter instalado tod
 Para reproduzir o painél localmente, execute o arquivo principal.Rmd.
 
 ## Dados utilizados
-Os dados de covid a nível mundial são coletados da [Universidade de Jhon Hopkins](https://github.com/CSSEGISandData/COVID-19)
-As estimativas das populações são coletados do [World Bank](https://data.worldbank.org/indicator/SP.POP.TOTL)
-Os dados de covid no Brasil são coletados do [Painél Coronavírus](https://covid.saude.gov.br/)
+Os dados de covid a nível mundial são coletados da [Universidade de Jhon Hopkins](https://github.com/CSSEGISandData/COVID-19).    
+As estimativas das populações são coletados do [World Bank](https://data.worldbank.org/indicator/SP.POP.TOTL).    
+Os dados de covid no Brasil são coletados do [Painél Coronavírus](https://covid.saude.gov.br/).    
 
 ## Coleta dos dados
 Os dados são coletados pelo R, através de nosso [pacote](https://github.com/sjlva/covidRdata).
