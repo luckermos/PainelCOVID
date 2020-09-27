@@ -1,8 +1,6 @@
 datasets <- function() {
   # Inserir aqui nome do dataset, caso outro seja adcionado
-  datasets <- c("jhu", "google", "caso_br",
-                "caso_full_br", "obito_cartorio_br", 
-                "ms_br")
+  datasets <- c("jhu", "google", "ms_br")
   return(datasets)
 }
 
