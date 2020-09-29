@@ -2,6 +2,7 @@
 
 ```{r}
 mun <- covidbr %>% drop_na(municipio) # Dados por Município
+mun <- rename(mun, pop_2019 = populacaoTCU2019)
 
 # Shapefile dos municípios do Brasil
 #munis <- geobr::read_municipality()
@@ -13,6 +14,7 @@ munis <- readRDS('dados/municipios.rds')
 
 Os dados sobre a COVID-19 no Brasil foram coletados do <a href='https://covid.saude.gov.br'>Painel Coronavírus</a> do Ministério da Saúde.
 
+
 ```{r}
 tags$div(selectInput(
   'estado', label = 'Escolha um Estado:',
@@ -22,18 +24,47 @@ tags$div(selectInput(
   style="display:inline-block")
 ```
 
+
 ```{r}
 mun_est <- reactive({
-  mun %>% filter(estado==input$estado)
-  
+  mun %>% 
+    filter(estado==input$estado)
 })
-## class(mun_est)
 
-## mutate(pop_2019=populacaoTCU2019)
 ```
 
 
 ### Teste
+
+#### **Mapas** {.tabset .tabset-pills}
+
+##### Casos Acumulados
+
+```{r}
+
+renderLeaflet({
+  mun_est() %>% greens = colorNumeric("Greens", domain = casosAcumulado/1000)
+    greensNA <- colorNumeric("Greens", domain = casosAcumulado/1000, na.color=rgb(0,0,0,0))
+    leaflet(data = mun_est()) %>%
+      addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+             attribution = paste(
+               '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+               '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+             )
+    ) %>% addPolygons(weight = 0.1, fillColor = ~greens(casosAcumulado/1000),
+                      color = "green",fillOpacity = 0.9,
+                      smoothFactor = 0.5,
+                      popup = paste0(municipio,": ", 
+                                     format(est$casosAcumulado, decimal.mark=",",
+                                            big.mark=".",small.mark="."),"<br>",
+                                     "Population: ", round(est$pop_2019/1000000,2)," Mi"))    %>% 
+    addLegend(position = "bottomright", pal = greensNA, values = ~casosAcumulado/1000, 
+              title="Casos Confirmados<br>(em milhares)", na.label = "", 
+              opacity = 1) %>% setView(lat=-10, lng=-48, zoom=3)
+})
+    
+  
+```
 
 # {-}
 
