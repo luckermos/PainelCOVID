@@ -1,8 +1,8 @@
 ## <img src="imagens/mg2.png" style="float: left; margin-right: 10px;" />Covid-19 por UF
 
 ```{r}
-mun <- covidbr %>% drop_na(municipio) # Dados por Município
-mun <- rename(mun, pop_2019 = populacaoTCU2019)
+#mun <- covidbr %>% drop_na(municipio) # Dados por Município
+mun <- covidbr %>% filter(municipio!="") # Dados por Município Novo
 
 # Shapefile dos municípios do Brasil
 #munis <- geobr::read_municipality()
@@ -26,10 +26,40 @@ tags$div(selectInput(
 
 
 ```{r}
+### Teste 1: Filtro Antes
 mun_est <- reactive({
   mun %>% 
     filter(estado==input$estado)
 })
+
+### Teste 2: Filtro Depois
+## Base para Mapas (Data mais Recente)
+mun_munis <- left_join(x=munis %>% mutate(code_muni=str_sub(code_muni,1,6),
+                                          code_muni=as.numeric(code_muni)), 
+                       y=mun %>% rename(pop_2019=populacaoTCU2019) %>% 
+                         filter(data==max(data)), 
+                       by=c("code_muni"="codmun")) %>% 
+  mutate(pop_2019=replace_na(pop_2019,0),
+         casosAcumulado=replace_na(casosAcumulado,0),
+         casosNovos=replace_na(casosNovos,0),
+         obitosAcumulado=replace_na(obitosAcumulado,0),
+         obitosNovos=replace_na(obitosNovos,0),
+         Recuperadosnovos=replace_na(Recuperadosnovos,0),
+         emAcompanhamentoNovos=replace_na(emAcompanhamentoNovos,0)
+         )
+
+## A Base 'mun', com todas as datas, será utilizada nos demais gráficos que são por dia
+
+## Base para gráfico por Semana:
+mun_semana <- mun %>% group_by(estado, municipio, semanaEpi) %>% 
+  summarise(semanaEpi = max(semanaEpi),
+            casosAcumulado = sum(casosAcumulado),
+            casosNovos = sum(casosNovos),
+            obitosAcumulado = sum(obitosAcumulado),
+            obitosNovos = sum(obitosNovos),
+            pop_2019 = sum(populacaoTCU2019))
+
+## Aplicar filtro do estado na hora de fazer os gráficos! (dentro do Render___)
 
 ```
 
@@ -43,9 +73,10 @@ mun_est <- reactive({
 ```{r}
 
 renderLeaflet({
-  mun_est() %>% greens = colorNumeric("Greens", domain = casosAcumulado/1000)
-    greensNA <- colorNumeric("Greens", domain = casosAcumulado/1000, na.color=rgb(0,0,0,0))
-    leaflet(data = mun_est()) %>%
+  dat <- mun_munis %>% filter(estado==input$estado)
+    greens = colorNumeric("Greens", domain = dat$casosAcumulado/1000)
+  greensNA <- colorNumeric("Greens", domain = dat$casosAcumulado/1000, na.color=rgb(0,0,0,0))
+    leaflet(data = dat) %>%
       addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
              attribution = paste(
                '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
@@ -54,10 +85,10 @@ renderLeaflet({
     ) %>% addPolygons(weight = 0.1, fillColor = ~greens(casosAcumulado/1000),
                       color = "green",fillOpacity = 0.9,
                       smoothFactor = 0.5,
-                      popup = paste0(municipio,": ", 
-                                     format(est$casosAcumulado, decimal.mark=",",
+                      popup = paste0(dat$municipio,": ", 
+                                     format(dat$casosAcumulado, decimal.mark=",",
                                             big.mark=".",small.mark="."),"<br>",
-                                     "Population: ", round(est$pop_2019/1000000,2)," Mi"))    %>% 
+                                     "Population: ", round(dat$pop_2019/1000000,2)," Mi"))    %>% 
     addLegend(position = "bottomright", pal = greensNA, values = ~casosAcumulado/1000, 
               title="Casos Confirmados<br>(em milhares)", na.label = "", 
               opacity = 1) %>% setView(lat=-10, lng=-48, zoom=3)
@@ -65,6 +96,8 @@ renderLeaflet({
     
   
 ```
+
+#### {-}
 
 # {-}
 
