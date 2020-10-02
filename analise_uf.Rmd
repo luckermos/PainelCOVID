@@ -188,6 +188,43 @@ renderLeaflet({
 })
 ```
 
+#### {-}
+
+#### **Todos os Municípios**
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderDataTable({
+  tabela <- 
+    mun_munis %>% filter(estado==input$estado) %>% st_as_sf() %>% st_drop_geometry() %>% 
+    mutate(casosAcumulado=replace_na(casosAcumulado,0),
+           obitosAcumulado=replace_na(obitosAcumulado,0),
+           casos_100k=replace_na(casos_100k,0),
+           obitos_100k=replace_na(obitos_100k,0)) %>% 
+    mutate(Tax_Let=
+             case_when(
+      round(100*obitosAcumulado/casosAcumulado,2)<10 ~ paste0('0',ifelse(casosAcumulado==0,0,round(100*obitosAcumulado/casosAcumulado,2)),"%"),
+      TRUE ~ paste0(ifelse(casosAcumulado==0,0,round(100*obitosAcumulado/casosAcumulado,2)),"%")
+      ),
+           casosAcumulado=format(casosAcumulado, decimal.mark=".", big.mark=",", 
+                            small.mark=","),
+           obitosAcumulado=format(obitosAcumulado, decimal.mark=".", big.mark=",", 
+                         small.mark=","),
+           casos_100k=format(round(casos_100k,2), decimal.mark=".", big.mark=",", 
+                                small.mark=","),
+           obitos_100k=format(round(obitos_100k,2), decimal.mark=".", big.mark=",", 
+                             small.mark=","),
+           pop_2019=format(pop_2019, decimal.mark=".", big.mark=",", 
+                          small.mark=",")) %>% 
+    select(name_muni, casosAcumulado, casos_100k, obitosAcumulado, obitos_100k, Tax_Let, 
+           pop_2019) %>% 
+    datatable(
+      colnames=c("Estado", "Casos Acumulados", "Casos (Por Mi Hab.)","Óbitos Acumulados", "Óbitos (Por Mi Hab.)", "Taxa de Letalidade", "População Estimada"), 
+              options = list(order=list(list(1, 'desc'))), rownames = F, style = 'bootstrap')
+  
+})
+```
+
+#### **Compare Municípios** {.tabset .tabset-pills}
 
 #### {-}
 
