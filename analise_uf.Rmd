@@ -3,6 +3,8 @@
 ```{r}
 #mun <- covidbr %>% drop_na(municipio) # Dados por Município
 mun <- covidbr %>% filter(municipio!="") # Dados por Município Novo
+# Retirando o DF
+mun <- mun %>% filter(estado!="DF")
 
 # Shapefile dos municípios do Brasil
 #munis <- geobr::read_municipality()
@@ -14,7 +16,7 @@ munis <- readRDS('dados/municipios.rds')
 
 Os dados sobre a COVID-19 no Brasil foram coletados do <a href='https://covid.saude.gov.br'>Painel Coronavírus</a> do Ministério da Saúde.
 
-### Municípios por Estado
+### **Municípios por Estado**
 
 ```{r}
 tags$div(selectInput(
@@ -22,14 +24,11 @@ tags$div(selectInput(
   choices = sort(unique(mun$estado)), 
   selected = "MG", 
   width='200px'), 
-  style="display:inline-block")
+  style="display:inline-block .selectize-dropdown { line-height: 10px; }")
 ```
 
 
 ```{r}
-# Retirando o DF
-mun <- mun %>% filter(estado!="DF")
-
 ## Base para Mapas (Data mais Recente)
 mun_munis <- left_join(x=munis %>% mutate(code_muni=str_sub(code_muni,1,6),
                                           code_muni=as.numeric(code_muni)), 
@@ -68,7 +67,7 @@ renderLeaflet({
   dat <- mun_munis %>% filter(estado==input$estado)
     greens = colorNumeric("Greens", domain = dat$casosAcumulado/1000)
   greensNA <- colorNumeric("Greens", domain = dat$casosAcumulado/1000, na.color=rgb(0,0,0,0))
-    leaflet(data = dat) %>%
+    leaflet(data = dat, options = leafletOptions(zoomControl = FALSE)) %>%
       addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
              attribution = paste(
                '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
@@ -80,10 +79,10 @@ renderLeaflet({
                       popup = paste0(dat$municipio,": ", 
                                      format(dat$casosAcumulado, decimal.mark=",",
                                             big.mark=".",small.mark="."),"<br>",
-                                     "Population: ", round(dat$pop_2019/1000000,2)," Mi"))    %>% 
+                                     "Population: ", round(dat$pop_2019/1000000,3)," Mi"))    %>% 
     addLegend(position = "bottomright", pal = greensNA, values = ~casosAcumulado/1000, 
               title="Casos Confirmados<br>(em milhares)", na.label = "", 
-              opacity = 1) %>% setView(lat=-10, lng=-48, zoom=3)
+              opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
 })
 ```
 
@@ -94,7 +93,7 @@ renderLeaflet({
   dat <- mun_munis %>% filter(estado==input$estado)
     greens = colorNumeric("Greens", domain = dat$casos_100k)
   greensNA <- colorNumeric("Greens", domain = dat$casos_100k, na.color=rgb(0,0,0,0))
-  leaflet(data = dat) %>%
+  leaflet(data = dat, options = leafletOptions(zoomControl = FALSE)) %>%
     addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
              attribution = paste(
                '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
@@ -106,10 +105,10 @@ renderLeaflet({
                       popup = paste0(dat$name_muni,": ", 
                                      format(round(dat$casos_100k,2), decimal.mark=",",
                                             big.mark=".",small.mark="."),"<br>",
-                                     "Population: ", round(est$pop_2019/1000000,2)," Mi")) %>% 
+                                     "Population: ", round(est$pop_2019/1000000,3)," Mi")) %>% 
     addLegend(position = "bottomright", pal = greensNA, values = ~casos_100k, 
               title="Casos Confirmados<br>(por milhão de<br>habitantes)", na.label = "", 
-              opacity = 1) %>% setView(lat=-10, lng=-48, zoom=3)
+              opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
 })
 ```
 
@@ -120,7 +119,7 @@ renderLeaflet({
   dat <- mun_munis %>% filter(estado==input$estado)
     reds = colorNumeric("Reds", domain = dat$obitosAcumulado)
   redsNA <- colorNumeric("Reds", domain = dat$obitosAcumulado, na.color=rgb(0,0,0,0))
-  leaflet(data = dat) %>%
+  leaflet(data = dat, options = leafletOptions(zoomControl = FALSE)) %>%
     addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
              attribution = paste(
                '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
@@ -132,9 +131,9 @@ renderLeaflet({
                       popup = paste0(dat$name_muni,": ", 
                                      format(dat$obitosAcumulado, decimal.mark=",",
                                             big.mark=".",small.mark="."),"<br>",
-                                     "Population: ", round(dat$pop_2019/1000000,2)," Mi")) %>% 
+                                     "Population: ", round(dat$pop_2019/1000000,3)," Mi")) %>% 
     addLegend(position = "bottomright", pal = redsNA, values = ~obitosAcumulado, 
-              title="Óbitos", na.label = "", opacity = 1) %>% setView(lat=-10, lng=-48, zoom=3)
+              title="Óbitos", na.label = "", opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
 })
 ```
 
@@ -145,7 +144,7 @@ renderLeaflet({
   dat <- mun_munis %>% filter(estado==input$estado)
     reds = colorNumeric("Reds", domain = dat$obitos_100k)
   redsNA <- colorNumeric("Reds", domain = dat$obitos_100k, na.color=rgb(0,0,0,0))
-  leaflet(data = dat) %>%
+  leaflet(data = dat, options = leafletOptions(zoomControl = FALSE)) %>%
     addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
              attribution = paste(
                '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
@@ -157,9 +156,9 @@ renderLeaflet({
                       popup = paste0(dat$name_muni,": ", 
                                      format(round(dat$obitos_100k,2), decimal.mark=",",
                                             big.mark=".",small.mark="."),"<br>",
-                                     "Population: ", round(dat$pop_2019/1000000,2)," Mi")) %>% 
+                                     "Population: ", round(dat$pop_2019/1000000,3)," Mi")) %>% 
     addLegend(position = "bottomright", pal = redsNA, values = ~obitos_100k, 
-              title="Óbitos (por milhão<br>de habitantes)", na.label = "", opacity = 1) %>% setView(lat=-10, lng=-48, zoom=3)
+              title="Óbitos (por milhão<br>de habitantes)", na.label = "", opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
 })
 ```
 
@@ -170,7 +169,7 @@ renderLeaflet({
   dat <- mun_munis %>% filter(estado==input$estado)
     reds = colorNumeric("YlOrRd", domain = dat$letalidade)
   redsNA <- colorNumeric("YlOrRd", domain = dat$letalidade, na.color=rgb(0,0,0,0))
-  leaflet(data = dat) %>%
+  leaflet(data = dat, options = leafletOptions(zoomControl = FALSE)) %>%
     addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
              attribution = paste(
                '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
@@ -183,9 +182,9 @@ renderLeaflet({
                                      format(round(dat$letalidade,2),
                                             decimal.mark=",", big.mark=".",
                                            small.mark="."),"%","<br>",
-                                     "Population: ", round(dat$pop_2019/1000000,2)," Mi")) %>% 
+                                     "Population: ", round(dat$pop_2019/1000000,3)," Mi")) %>% 
     addLegend(position = "bottomright", pal = redsNA, values = ~letalidade, 
-              title="Taxa de<br>Letalidade (%)", na.label = "", opacity = 1) %>% setView(lat=-10, lng=-48, zoom=3)
+              title="Taxa de<br>Letalidade (%)", na.label = "", opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
 })
 ```
 
