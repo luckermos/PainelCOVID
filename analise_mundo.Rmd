@@ -736,7 +736,7 @@ milhão de habitantes)") +
 
 ```
 
-##### Novos Casos
+##### Novos Casos Diários
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
@@ -755,7 +755,7 @@ renderPlotly({
 
 ```
 
-##### Novos Casos por Semana Epidemiológica
+##### Novos Casos Semanais
 
 ```{r}
 renderPlotly({
@@ -816,7 +816,7 @@ de habitantes)") +
 
 ```
 
-##### Novos Óbitos
+##### Novos Óbitos Diários
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
@@ -834,7 +834,7 @@ renderPlotly({
 
 ```
 
-##### Novos Óbitos por Semana Epidemiológica
+##### Novos Óbitos Semanais
 
 ```{r}
 renderPlotly({
@@ -894,7 +894,7 @@ milhão de habitantes)") +
 
 ```
 
-##### Novos Casos
+##### Novos Casos Diários
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
@@ -906,7 +906,7 @@ renderPlotly({
 
 ```
 
-##### Novos Casos por Semana Epidemiológica
+##### Novos Casos por Semanais
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
@@ -959,7 +959,7 @@ de habitantes)") +
 
 ```
 
-##### Novos Óbitos
+##### Novos Óbitos Diários
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
@@ -971,7 +971,7 @@ renderPlotly({
 
 ```
 
-##### Novos Óbitos por Semana Epidemiológica
+##### Novos Óbitos Semanais
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
