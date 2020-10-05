@@ -20,19 +20,8 @@ Os dados sobre a COVID-19 no Brasil foram coletados do <a href='https://covid.sa
 #brasil <- geobr::read_state(showProgress = F)
 #saveRDS(brasil, "dados/brasil.rds")
 brasil <- readRDS("dados/brasil.rds")
-#brasil$code_state <- as.character(brasil$code_state)
 
 # Agrupando dados por Estado
-#est <- covidbr %>% drop_na(estado) %>% filter(replace_na(municipio,0)==0) %>% 
-#  group_by(regiao, estado, coduf, data) %>% 
-#  summarise(semanaEpi = max(semanaEpi),
-#            casosAcumulado = max(casosAcumulado),
-#            casosNovos = max(casosNovos),
-#            obitosAcumulado = max(obitosAcumulado),
-#            obitosNovos = max(obitosNovos),
-#            pop_2019 = max(populacaoTCU2019))
-
-# Agrupando dados por Estado Novo
 est <- covidbr %>% filter(estado!="") %>% filter(municipio=="") %>% 
   group_by(regiao, estado, coduf, data) %>% 
   summarise(semanaEpi = max(semanaEpi),

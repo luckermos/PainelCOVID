@@ -38,22 +38,15 @@ covid <- covid %>% mutate(
   Confirmed=replace_na(Confirmed,0),
   Deaths=replace_na(Deaths,0)) %>% drop_na(Last_Update)
 
-## CRIANDO VARIÁVEL: SEMANA EPIDEMIOLOGICA
-covid <- covid %>% mutate(
-  n_week = week((date-4)),
-  n_week = n_week - min(n_week) + 1 # Para ajustar para a semana epidem. do min. da saúde, + 3!
-) 
-
 ## CONDENSANDO INFORMAÇÕES POR PAÍS E DATA
 covid <- covid %>% group_by(Country_Region, date) %>% 
   summarise(
     Confirmed = sum(Confirmed),
     Deaths = sum(Deaths),
-    Recovered = sum(Recovered),
-    n_week = max(n_week))
+    Recovered = sum(Recovered))
 
 ## CRIANDO VARIÁVEIS: NOVOS CASOS E ÓBITOS DIARIOS
-dia_ant <- covid %>% mutate(date=date+1) %>% select(-c('n_week')) %>% 
+dia_ant <- covid %>% mutate(date=date+1) %>% 
   rename(ant_Confirmed=Confirmed, ant_Deaths=Deaths, ant_Recovered=Recovered)
 
 covid <- left_join(x=covid, y=dia_ant, by=c("Country_Region", "date")) %>% 
@@ -179,7 +172,6 @@ covid_cont <- covid %>%
   summarise(Confirmed = sum(Confirmed), 
             Deaths = sum(Deaths),
             Recovered = sum(Recovered),
-            n_week = max(n_week),
             New_Confirmed=sum(New_Confirmed),
             New_Deaths=sum(New_Deaths),
             New_Recovered=sum(New_Recovered),
@@ -192,7 +184,6 @@ covid_world <- covid %>%
   Confirmed = sum(Confirmed),
   Deaths = sum(Deaths),
   Recovered = sum(Recovered),
-  n_week = max(n_week),
   New_Confirmed = sum(New_Confirmed),
   New_Deaths = sum(New_Deaths),
   New_Recovered = sum(New_Recovered),
