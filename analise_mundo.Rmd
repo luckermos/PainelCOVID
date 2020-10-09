@@ -29,7 +29,7 @@ date_world <- na.omit(covid$date) %>% max() %>% format("%d/%m/%Y")
 
 Os dados do Covid-19 utilizados nas análises a seguir foram coletados a partir da base de dados da <a href='https://github.com/CSSEGISandData/COVID-19'>Universidade Johns Hopkins</a>.  
 
-As estimativas das populações para o ano de 2019 utilizadas foram obtidas no <a href='https://data.worldbank.org/indicator/SP.POP.TOTL'>The World Bank</a>.
+As estimativas das populações utilizadas foram obtidas no <a href='https://data.worldbank.org/indicator/SP.POP.TOTL'>The World Bank</a>.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 ## PREENCHENDO CAMPOS NULOS
@@ -477,14 +477,14 @@ darktheme <- theme_minimal() + theme(plot.title = element_text(color = "#c8c8c8"
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 tags$div(selectizeInput(
-  'paises', label = 'Escolha Países:',
+  'paises', label = 'Escolha Até 6 Países:',
   choices = sort(unique(covid$Country_Region)), 
   selected = (covid %>% filter(date==max(date)) %>% arrange(desc(Confirmed)))$Country_Region[1:6], 
   width='1000px', multiple=T, options = list(maxItems = 6)), 
   style="display:inline-block")
 ```
 
-Escolha até 6 países e os compare com relação aos:
+
 
 ##### Casos
 
@@ -897,7 +897,7 @@ renderPlotly({
 
 ```
 
-##### Novos Casos por Semanais
+##### Novos Casos Semanais
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
