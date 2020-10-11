@@ -42,8 +42,8 @@ mun_munis <- left_join(x=munis %>% mutate(code_muni=str_sub(code_muni,1,6),
          obitosNovos=replace_na(obitosNovos,0),
          Recuperadosnovos=replace_na(Recuperadosnovos,0),
          emAcompanhamentoNovos=replace_na(emAcompanhamentoNovos,0),
-         casos_100k=(casosAcumulado/pop_2019)*1000000,
-         obitos_100k = (obitosAcumulado/pop_2019)*1000000,
+         casos_100k=(casosAcumulado/pop_2019)*100000,
+         obitos_100k = (obitosAcumulado/pop_2019)*100000,
          letalidade = 100*obitosAcumulado/casosAcumulado)
 
 ## A Base 'mun', com todas as datas, será utilizada nos demais gráficos que são por dia
@@ -79,7 +79,7 @@ renderLeaflet({
                       popup = paste0(dat$municipio,": ", 
                                      format(dat$casosAcumulado, decimal.mark=",",
                                             big.mark=".",small.mark="."),"<br>",
-                                     "Population: ", round(dat$pop_2019/1000000,3)," Mi"))    %>% 
+                                     "População: ", round(dat$pop_2019/1000,3)," Mil"))    %>% 
     addLegend(position = "bottomright", pal = greensNA, values = ~casosAcumulado/1000, 
               title="Casos Confirmados<br>(em milhares)", na.label = "", 
               opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
@@ -105,9 +105,9 @@ renderLeaflet({
                       popup = paste0(dat$name_muni,": ", 
                                      format(round(dat$casos_100k,2), decimal.mark=",",
                                             big.mark=".",small.mark="."),"<br>",
-                                     "Population: ", round(est$pop_2019/1000000,3)," Mi")) %>% 
+                                     "População: ", round(est$pop_2019/1000,3)," Mil")) %>% 
     addLegend(position = "bottomright", pal = greensNA, values = ~casos_100k, 
-              title="Casos Confirmados<br>(por milhão de<br>habitantes)", na.label = "", 
+              title="Casos Confirmados<br>(por 100 mil<br>habitantes)", na.label = "", 
               opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
 })
 ```
@@ -131,7 +131,7 @@ renderLeaflet({
                       popup = paste0(dat$name_muni,": ", 
                                      format(dat$obitosAcumulado, decimal.mark=",",
                                             big.mark=".",small.mark="."),"<br>",
-                                     "Population: ", round(dat$pop_2019/1000000,3)," Mi")) %>% 
+                                     "População: ", round(dat$pop_2019/1000,3)," Mil")) %>% 
     addLegend(position = "bottomright", pal = redsNA, values = ~obitosAcumulado, 
               title="Óbitos", na.label = "", opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
 })
@@ -156,9 +156,9 @@ renderLeaflet({
                       popup = paste0(dat$name_muni,": ", 
                                      format(round(dat$obitos_100k,2), decimal.mark=",",
                                             big.mark=".",small.mark="."),"<br>",
-                                     "Population: ", round(dat$pop_2019/1000000,3)," Mi")) %>% 
+                                     "População: ", round(dat$pop_2019/1000,3)," Mil")) %>% 
     addLegend(position = "bottomright", pal = redsNA, values = ~obitos_100k, 
-              title="Óbitos (por milhão<br>de habitantes)", na.label = "", opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
+              title="Óbitos (por 100 mil<br>habitantes)", na.label = "", opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
 })
 ```
 
@@ -182,7 +182,7 @@ renderLeaflet({
                                      format(round(dat$letalidade,2),
                                             decimal.mark=",", big.mark=".",
                                            small.mark="."),"%","<br>",
-                                     "Population: ", round(dat$pop_2019/1000000,3)," Mi")) %>% 
+                                     "População: ", round(dat$pop_2019/1000,3)," Mil")) %>% 
     addLegend(position = "bottomright", pal = redsNA, values = ~letalidade, 
               title="Taxa de<br>Letalidade (%)", na.label = "", opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
 })
@@ -218,13 +218,64 @@ renderDataTable({
     select(name_muni, casosAcumulado, casos_100k, obitosAcumulado, obitos_100k, Tax_Let, 
            pop_2019) %>% 
     datatable(
-      colnames=c("Estado", "Casos Acumulados", "Casos (Por Mi Hab.)","Óbitos Acumulados", "Óbitos (Por Mi Hab.)", "Taxa de Letalidade", "População Estimada"), 
+      colnames=c("Estado", "Casos Acumulados", "Casos (Por 100 Mil Hab.)","Óbitos Acumulados", "Óbitos (Por 100 Mil Hab.)", "Taxa de Letalidade", "População Estimada"), 
               options = list(order=list(list(1, 'desc'))), rownames = F, style = 'bootstrap')
   
 })
 ```
 
 #### **Compare Municípios** {.tabset .tabset-pills}
+
+```{r}
+mun <- mun %>% filter(populacaoTCU2019>=100000) %>% 
+  mutate(pop_2019=populacaoTCU2019,
+                      mun_est=paste(municipio,'-',estado))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+tags$div(selectizeInput(
+  'munic', label = 'Escolha Municípios:',
+  choices = sort(unique(mun$mun_est)), 
+  selected = (mun %>% filter(data==max(data)) %>% arrange(desc(casosAcumulado)))$mun_est[1:6], 
+  width='1000px', multiple=T, options = list(maxItems = 6)), 
+  style="display:inline-block")
+```
+
+Escolha até 6 municípios (com mais de 100 mil habitantes) e os compare com relação aos:
+
+##### Casos
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderPlotly({
+  d <- mun %>% filter(data==max(data)) %>% filter(mun_est %in% input$munic)
+  
+  ggplotly(ggplot(data = d, aes(x=reorder(mun_est, -casosAcumulado), 
+                                y=casosAcumulado/1000, fill=mun_est,
+                                text=paste0(mun_est,": ",
+                                            format(casosAcumulado, decimal.mark=",", big.mark=".",
+                                          small.mark=".")))) + 
+  geom_bar(stat="identity") + coord_flip() + xlab("") + 
+  ylab("Casos Acumulados (em milhares)") + darktheme + theme(legend.position = "none") +
+  ggtitle("Casos Acumulados") + scale_fill_hue(l=40), tooltip = "text") 
+})
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderPlotly({
+  d <- mun %>% filter(mun_est %in% input$munic)
+  
+  ggplotly(ggplot(data = d, aes(x=data, y=casosAcumulado/1000, color=mun_est)) + 
+  geom_line(size=0.8) + 
+    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(casosAcumulado/1000,2), decimal.mark=",", big.mark=".",
+                                          small.mark=".")))) + 
+    xlab("") + 
+  ylab("Casos Confirmados (em milhares)") + 
+  ggtitle("Evolução: Casos Acumulados") + darktheme + labs(color="") + theme(legend.position="bottom") +
+  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  
+})
+```
 
 #### {-}
 

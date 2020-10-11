@@ -125,5 +125,5 @@ Para tornar os gráficos interativos como desejado, os gráficos foram criados o
 
 # Demais Dificuldades e Comentários Finais
 
-- Ter que usar render() por conta do shiny
-- usar 
+Por se tratar de um documento interativo ,e não um aplicativo puramente em *shiny*, alguns recursos do rmarkdown, como artifícios HTML, foram perdidos ao se hospedar o aplicativo no [shinyapps](https://www.shinyapps.io). Um exemplo são os ícones utilizados para cada aba que só executam de forma correta se o aplicativo for reproduzido localmente. Além disso, como foram utilizados recursos *shiny*, sempre que se fosse renderizar um *output* era necessário usar uma função da família `render()` do próprio *shiny*.  
+Outra dificuldade também recorrente no que diz respeito à hospedagem do aplicativo é com relação ao limite de memória RAM de 1Gb pois utilizamos a versão gratuita do sistema. Por conta disso, o aplicativo quando acessado pelo *shinyapps* pode apresentar falhas por exceder o limite de memória. Por isso, é recomendado que o painel seja rodado localmente para melhor desempenho.
