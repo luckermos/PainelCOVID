@@ -1,4 +1,4 @@
-## <img src="imagens/mg2.png" style="float: left; margin-right: 10px;" />Covid-19 por UF
+## <img src="imagens/mg2.png" style="float: left; margin-right: 10px;" />Covid-19 por Estado
 
 ```{r}
 #mun <- covidbr %>% drop_na(municipio) # Dados por Município
@@ -241,7 +241,7 @@ tags$div(selectizeInput(
   style="display:inline-block")
 ```
 
-Escolha até 6 municípios (com mais de 100 mil habitantes) e os compare com relação aos:
+Escolha até 6 municípios (com mais de 100 mil habitantes) de todo o Brasil e os compare com relação aos:
 
 ##### Casos
 

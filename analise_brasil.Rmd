@@ -67,7 +67,7 @@ covid_brasil <- reg %>% group_by(data) %>%
 ```
 
 
-### **Por Estado**
+### **Por UF**
 
 #### **Mapas** {.tabset .tabset-pills}
 
@@ -206,7 +206,7 @@ leaflet(data = est) %>%
 
 #### {-}
 
-#### **Todos os Estados**
+#### **Todas as UF's**
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderDataTable({
@@ -263,7 +263,7 @@ covid_brasil_week <- covid_brasil %>% group_by(semanaEpi) %>%
   )
 ```
 
-#### **Compare Estados** {.tabset .tabset-pills}
+#### **Compare UF's** {.tabset .tabset-pills}
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 tags$div(selectizeInput(
@@ -274,7 +274,7 @@ tags$div(selectizeInput(
   style="display:inline-block")
 ```
 
-Escolha até 6 estados e os compare com relação aos:
+Escolha até 6 UF's e as compare com relação aos:
 
 ##### Casos
 
