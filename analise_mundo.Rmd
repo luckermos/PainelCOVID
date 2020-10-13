@@ -1,18 +1,18 @@
 ```{r atualizar_dados}
-actionButton("atualizar", "Atualizar Dados", icon=icon("sync-alt"))
+actionButton("atualizar", "Atualizar Dados", icon = icon("sync-alt"))
 
 observeEvent(input$atualizar, {
-  #showNotification("Atualizando Dados...", closeButton = F, duration = NULL)
+  # showNotification("Atualizando Dados...", closeButton = F, duration = NULL)
   showModal(modalDialog(
-    title="Atualizando Dados...",
+    title = "Atualizando Dados...",
     "Por favor, aguarde.",
-    size="m",
+    size = "m",
     easyClose = F,
     footer = NULL
   ))
   atualizar_dados(datasets())
   session$reload()
-  })
+})
 ```
 
 # {.tabset .tabset-fade}
@@ -22,7 +22,9 @@ observeEvent(input$atualizar, {
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 covid <- carregar_dado("jhu") # Johns Hopkins
 
-date_world <- na.omit(covid$date) %>% max() %>% format("%d/%m/%Y")
+date_world <- na.omit(covid$date) %>%
+  max() %>%
+  format("%d/%m/%Y")
 ```
 
 *Última Atualização: `r date_world`*
@@ -33,101 +35,112 @@ As estimativas das populações utilizadas foram obtidas no <a href='https://dat
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 ## PREENCHENDO CAMPOS NULOS
-covid <- covid %>% mutate(
-  date=as_date(date),
-  Confirmed=replace_na(Confirmed,0),
-  Deaths=replace_na(Deaths,0)) %>% drop_na(Last_Update)
+covid <- covid %>%
+  mutate(
+    date = as_date(date),
+    Confirmed = replace_na(Confirmed, 0),
+    Deaths = replace_na(Deaths, 0)
+  ) %>%
+  drop_na(Last_Update)
 
 ## CONDENSANDO INFORMAÇÕES POR PAÍS E DATA
-covid <- covid %>% group_by(Country_Region, date) %>% 
+covid <- covid %>%
+  group_by(Country_Region, date) %>%
   summarise(
     Confirmed = sum(Confirmed),
     Deaths = sum(Deaths),
-    Recovered = sum(Recovered))
+    Recovered = sum(Recovered)
+  )
 
 ## CRIANDO VARIÁVEIS: NOVOS CASOS E ÓBITOS DIARIOS
-dia_ant <- covid %>% mutate(date=date+1) %>% 
-  rename(ant_Confirmed=Confirmed, ant_Deaths=Deaths, ant_Recovered=Recovered)
+dia_ant <- covid %>%
+  mutate(date = date + 1) %>%
+  rename(ant_Confirmed = Confirmed, ant_Deaths = Deaths, ant_Recovered = Recovered)
 
-covid <- left_join(x=covid, y=dia_ant, by=c("Country_Region", "date")) %>% 
-  mutate(ant_Confirmed=replace_na(ant_Confirmed,0),
-         ant_Deaths=replace_na(ant_Deaths,0),
-         ant_Recovered=replace_na(ant_Recovered,0),
-         New_Confirmed=Confirmed-ant_Confirmed,
-         New_Deaths=Deaths-ant_Deaths,
-         New_Recovered=Recovered-ant_Recovered) %>% 
+covid <- left_join(x = covid, y = dia_ant, by = c("Country_Region", "date")) %>%
+  mutate(
+    ant_Confirmed = replace_na(ant_Confirmed, 0),
+    ant_Deaths = replace_na(ant_Deaths, 0),
+    ant_Recovered = replace_na(ant_Recovered, 0),
+    New_Confirmed = Confirmed - ant_Confirmed,
+    New_Deaths = Deaths - ant_Deaths,
+    New_Recovered = Recovered - ant_Recovered
+  ) %>%
   select(-c("ant_Confirmed", "ant_Deaths", "ant_Recovered"))
 
 ## INFORMAÇÃO - RECUPERADOS
-covid_today <- covid %>% filter(date==max(date)) %>% 
+covid_today <- covid %>%
+  filter(date == max(date)) %>%
   select(Country_Region, date, Confirmed, Recovered)
-covid_15 <- covid %>% filter(date==max(date)-15) %>% 
-  select(Country_Region, date, Confirmed, Recovered) %>% 
-  rename(Confirmed_15=Confirmed, Recovered_15=Recovered) %>% 
-  mutate(date=date+15)
+covid_15 <- covid %>%
+  filter(date == max(date) - 15) %>%
+  select(Country_Region, date, Confirmed, Recovered) %>%
+  rename(Confirmed_15 = Confirmed, Recovered_15 = Recovered) %>%
+  mutate(date = date + 15)
 
-covid_compar <- left_join(x=covid_today, y=covid_15, by=c("Country_Region", "date")) %>% 
-  mutate(Confirmed=replace_na(Confirmed, 0),
-         Recovered=replace_na(Recovered, 0),
-         Confirmed_15=replace_na(Confirmed_15, 0),
-         Recovered_15=replace_na(Recovered_15, 0)) %>% 
-  mutate(IND_INFO=case_when(
-    Recovered==0 ~ "<span style='color:DarkRed'>Sem Informação</span>", # Sem info de recuperação
+covid_compar <- left_join(x = covid_today, y = covid_15, by = c("Country_Region", "date")) %>%
+  mutate(
+    Confirmed = replace_na(Confirmed, 0),
+    Recovered = replace_na(Recovered, 0),
+    Confirmed_15 = replace_na(Confirmed_15, 0),
+    Recovered_15 = replace_na(Recovered_15, 0)
+  ) %>%
+  mutate(IND_INFO = case_when(
+    Recovered == 0 ~ "<span style='color:DarkRed'>Sem Informação</span>", # Sem info de recuperação
     Confirmed > Confirmed_15 & Recovered > Recovered_15 ~ "<span style='color:DarkGreen'>Atualizado</span>", # atualizado
     Confirmed == Confirmed_15 & Recovered >= Recovered_15 ~ "<span style='color:DarkGreen'>Atualizado</span>", # atualizado tbm
     TRUE ~ "<span style='color:DarkOrange'>Desatualizado</span>"
-  )) %>% 
+  )) %>%
   select(Country_Region, date, IND_INFO)
 
-covid <- left_join(x=covid, y=covid_compar, by=c("Country_Region","date"))
-
+covid <- left_join(x = covid, y = covid_compar, by = c("Country_Region", "date"))
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 ## Ajustes Base Covid
-covid <- covid %>% filter(!(Country_Region=="Mainland China" & Confirmed==0)) # Tratamento China NA
+covid <- covid %>% filter(!(Country_Region == "Mainland China" & Confirmed == 0)) # Tratamento China NA
 
-covid <- covid %>% mutate(Country_Region=case_when(
-  Country_Region=="Bahamas, The" ~ "Bahamas",
-  Country_Region=="Brunei" ~ "Brunei Darussalam",
-  Country_Region=="Burma" ~ "Myanmar",
-  Country_Region=="Cabo Verde" ~ "Cape Verde",
-  Country_Region=="Channel Islands" ~ "Jersey",
-  Country_Region=="Congo (Brazzaville)" ~ "Republic of Congo",
-  Country_Region=="Congo (Kinshasa)" ~ "Democratic Republic of the Congo",
-  Country_Region=="Cote d'Ivoire" ~ "Côte d'Ivoire",
-  Country_Region=="Curacao" ~ "Curaçao",
-  Country_Region=="Czechia" ~ "Czech Republic",
-  Country_Region=="East Timor" ~ "Timor-Leste",
-  Country_Region=="Eswatini" ~ "Swaziland",
-  Country_Region=="Faroe Islands" ~ "Faeroe Islands",
-  Country_Region=="Gambia" ~ "The Gambia",
-  Country_Region=="Gambia, The" ~ "The Gambia",
-  Country_Region=="Holy See" ~ "Vatican",
-  Country_Region=="Hong Kong SAR" ~ "Hong Kong",
-  Country_Region=="Iran (Islamic Republic of)" ~ "Iran",
-  Country_Region=="Ivory Coast" ~ "Côte d'Ivoire",
-  Country_Region=="Korea, South" ~ "Republic of Korea",
-  Country_Region=="Laos" ~ "Lao PDR",
-  Country_Region=="Macao SAR" ~ "Macao",
-  Country_Region=="Macau" ~ "Macao",
-  Country_Region=="Mainland China" ~ "China",
-  Country_Region=="North Macedonia" ~ "Macedonia",
-  Country_Region=="Republic of Ireland" ~ "Ireland",
-  Country_Region=="Republic of Moldova" ~ "Moldova",
-  Country_Region=="Russia" ~ "Russian Federation",
-  Country_Region=="Saint Barthelemy" ~ "Saint-Barthélemy",
-  Country_Region=="Saint Martin" ~ "Sint Maarten",
-  Country_Region=="Sao Tome and Principe" ~ "São Tomé and Principe",
-  Country_Region=="South Korea" ~ "Republic of Korea",
-  Country_Region=="St. Martin" ~ "Sint Maarten",
-  Country_Region=="Taipei and environs" ~ "Taiwan",
-  Country_Region=="Taiwan*" ~ "Taiwan",
-  Country_Region=="UK" ~ "United Kingdom",
-  Country_Region=="US" ~ "United States",
-  Country_Region=="Vatican City" ~ "Vatican",
-  Country_Region=="Viet Nam" ~ "Vietnam",
-  Country_Region=="West Bank and Gaza" ~ "Palestine",
+covid <- covid %>% mutate(Country_Region = case_when(
+  Country_Region == "Bahamas, The" ~ "Bahamas",
+  Country_Region == "Brunei" ~ "Brunei Darussalam",
+  Country_Region == "Burma" ~ "Myanmar",
+  Country_Region == "Cabo Verde" ~ "Cape Verde",
+  Country_Region == "Channel Islands" ~ "Jersey",
+  Country_Region == "Congo (Brazzaville)" ~ "Republic of Congo",
+  Country_Region == "Congo (Kinshasa)" ~ "Democratic Republic of the Congo",
+  Country_Region == "Cote d'Ivoire" ~ "Côte d'Ivoire",
+  Country_Region == "Curacao" ~ "Curaçao",
+  Country_Region == "Czechia" ~ "Czech Republic",
+  Country_Region == "East Timor" ~ "Timor-Leste",
+  Country_Region == "Eswatini" ~ "Swaziland",
+  Country_Region == "Faroe Islands" ~ "Faeroe Islands",
+  Country_Region == "Gambia" ~ "The Gambia",
+  Country_Region == "Gambia, The" ~ "The Gambia",
+  Country_Region == "Holy See" ~ "Vatican",
+  Country_Region == "Hong Kong SAR" ~ "Hong Kong",
+  Country_Region == "Iran (Islamic Republic of)" ~ "Iran",
+  Country_Region == "Ivory Coast" ~ "Côte d'Ivoire",
+  Country_Region == "Korea, South" ~ "Republic of Korea",
+  Country_Region == "Laos" ~ "Lao PDR",
+  Country_Region == "Macao SAR" ~ "Macao",
+  Country_Region == "Macau" ~ "Macao",
+  Country_Region == "Mainland China" ~ "China",
+  Country_Region == "North Macedonia" ~ "Macedonia",
+  Country_Region == "Republic of Ireland" ~ "Ireland",
+  Country_Region == "Republic of Moldova" ~ "Moldova",
+  Country_Region == "Russia" ~ "Russian Federation",
+  Country_Region == "Saint Barthelemy" ~ "Saint-Barthélemy",
+  Country_Region == "Saint Martin" ~ "Sint Maarten",
+  Country_Region == "Sao Tome and Principe" ~ "São Tomé and Principe",
+  Country_Region == "South Korea" ~ "Republic of Korea",
+  Country_Region == "St. Martin" ~ "Sint Maarten",
+  Country_Region == "Taipei and environs" ~ "Taiwan",
+  Country_Region == "Taiwan*" ~ "Taiwan",
+  Country_Region == "UK" ~ "United Kingdom",
+  Country_Region == "US" ~ "United States",
+  Country_Region == "Vatican City" ~ "Vatican",
+  Country_Region == "Viet Nam" ~ "Vietnam",
+  Country_Region == "West Bank and Gaza" ~ "Palestine",
   TRUE ~ Country_Region
 ))
 
@@ -135,70 +148,84 @@ covid <- covid %>% mutate(Country_Region=case_when(
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
 ## Agregando info da Covid (mais recente) no Mapa
-world <- left_join(x=world %>% filter(name_long!="Antarctica"), 
-                   y=covid %>% group_by(Country_Region) %>% 
-                     filter(date==max(date)), by=c("name_long"="Country_Region"))
+world <- left_join(
+  x = world %>% filter(name_long != "Antarctica"),
+  y = covid %>% group_by(Country_Region) %>%
+    filter(date == max(date)), by = c("name_long" = "Country_Region")
+)
 
 ## Carregando Base com Estimativas das Populações para 2019
-#temp.file <- paste(tempfile(),".xls",sep = "")
-#download.file("http://api.worldbank.org/v2/en/indicator/SP.POP.TOTL?downloadformat=excel", 
+# temp.file <- paste(tempfile(),".xls",sep = "")
+# download.file("http://api.worldbank.org/v2/en/indicator/SP.POP.TOTL?downloadformat=excel",
 #              temp.file, mode = "wb")
-#pop_2019 <- read_excel(temp.file, sheet="Data", skip = 3) %>% 
-#  select(`Country Name`, `Country Code`, "2019") %>% 
+# pop_2019 <- read_excel(temp.file, sheet="Data", skip = 3) %>%
+#  select(`Country Name`, `Country Code`, "2019") %>%
 #  rename(pop_est2="2019")
-#saveRDS(pop_2019, "dados/pop_2019.rds")
+# saveRDS(pop_2019, "dados/pop_2019.rds")
 pop_2019 <- readRDS("dados/pop_2019.rds")
 
 ## Priorizando Estimativa da População para 2019 (se houver)
-world <- left_join(x=world, y=pop_2019, by=c("iso_a3"="Country Code")) %>% #### OK
-  mutate(pop_est2=replace_na(pop_est2,0)) %>% 
-  mutate(pop_est=ifelse(pop_est2>0,pop_est2,pop_est)) %>% select(-pop_est2) %>% 
-  mutate(Confirmed_pop=(Confirmed/pop_est)*100000,
-         Deaths_pop=(Deaths/pop_est)*100000,
-         Treatment_pop=((Confirmed-Recovered)/pop_est)*100000)
+world <- left_join(x = world, y = pop_2019, by = c("iso_a3" = "Country Code")) %>% #### OK
+  mutate(pop_est2 = replace_na(pop_est2, 0)) %>%
+  mutate(pop_est = ifelse(pop_est2 > 0, pop_est2, pop_est)) %>%
+  select(-pop_est2) %>%
+  mutate(
+    Confirmed_pop = (Confirmed / pop_est) * 100000,
+    Deaths_pop = (Deaths / pop_est) * 100000,
+    Treatment_pop = ((Confirmed - Recovered) / pop_est) * 100000
+  )
 
 ## Trazendo info sobre população para os dados covid
-covid <- left_join(x=covid, y=world %>% st_drop_geometry() %>% select(name_long, continent, pop_est), 
-                   by=c("Country_Region"="name_long")) %>% 
+covid <- left_join(
+  x = covid, y = world %>% st_drop_geometry() %>% select(name_long, continent, pop_est),
+  by = c("Country_Region" = "name_long")
+) %>%
 
-  mutate(Confirmed_pop=(Confirmed/pop_est)*100000,
-         Deaths_pop=(Deaths/pop_est)*100000,
-         Treatment_pop=((Confirmed-Recovered)/pop_est)*100000)
+  mutate(
+    Confirmed_pop = (Confirmed / pop_est) * 100000,
+    Deaths_pop = (Deaths / pop_est) * 100000,
+    Treatment_pop = ((Confirmed - Recovered) / pop_est) * 100000
+  )
 
 ## Sumarizando por Continente
-covid_cont <- covid %>% 
-  mutate(pop_est=replace_na(pop_est,0)) %>% 
-  group_by(continent, date) %>% 
-  summarise(Confirmed = sum(Confirmed), 
-            Deaths = sum(Deaths),
-            Recovered = sum(Recovered),
-            New_Confirmed=sum(New_Confirmed),
-            New_Deaths=sum(New_Deaths),
-            New_Recovered=sum(New_Recovered),
-            pop_est=sum(pop_est))
+covid_cont <- covid %>%
+  mutate(pop_est = replace_na(pop_est, 0)) %>%
+  group_by(continent, date) %>%
+  summarise(
+    Confirmed = sum(Confirmed),
+    Deaths = sum(Deaths),
+    Recovered = sum(Recovered),
+    New_Confirmed = sum(New_Confirmed),
+    New_Deaths = sum(New_Deaths),
+    New_Recovered = sum(New_Recovered),
+    pop_est = sum(pop_est)
+  )
 
 ## Agrupando para todo o mundo
 covid_world <- covid %>%
-  mutate(pop_est=replace_na(pop_est,0)) %>% 
-  group_by(date) %>% summarise(
-  Confirmed = sum(Confirmed),
-  Deaths = sum(Deaths),
-  Recovered = sum(Recovered),
-  New_Confirmed = sum(New_Confirmed),
-  New_Deaths = sum(New_Deaths),
-  New_Recovered = sum(New_Recovered),
-  pop_est=sum(pop_est)
-)
+  mutate(pop_est = replace_na(pop_est, 0)) %>%
+  group_by(date) %>%
+  summarise(
+    Confirmed = sum(Confirmed),
+    Deaths = sum(Deaths),
+    Recovered = sum(Recovered),
+    New_Confirmed = sum(New_Confirmed),
+    New_Deaths = sum(New_Deaths),
+    New_Recovered = sum(New_Recovered),
+    pop_est = sum(pop_est)
+  )
 
 ## Mapa "sem" Iêmen
 world_4 <- world %>% mutate(
-  Deaths=case_when(name_long=="Yemen"~0,
-                          TRUE ~ Deaths),
-  )
+  Deaths = case_when(
+    name_long == "Yemen" ~ 0,
+    TRUE ~ Deaths
+  ),
+)
 
 ## Transformando Mapas 'sf' para 'st' para leaflet.
-world <- as(world, Class="Spatial")
-world_4 <- as(world_4, Class="Spatial")
+world <- as(world, Class = "Spatial")
+world_4 <- as(world_4, Class = "Spatial")
 ```
 
 
@@ -210,51 +237,69 @@ world_4 <- as(world_4, Class="Spatial")
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  greens = colorNumeric("Greens", domain = world$Confirmed/1000)
-  greensNA <- colorNumeric("Greens", domain = world$Confirmed/1000, na.color=rgb(0,0,0,0))
+  greens <- colorNumeric("Greens", domain = world$Confirmed / 1000)
+  greensNA <- colorNumeric("Greens", domain = world$Confirmed / 1000, na.color = rgb(0, 0, 0, 0))
   leaflet(data = world) %>%
-  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-           attribution = paste(
-             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-           )
-  ) %>% addPolygons(weight = 0.1, fillColor = ~greens(Confirmed/1000),
-                    color = "green",fillOpacity = 0.9,
-                    smoothFactor = 0.5,
-                    popup = paste0(world$name_long,": ", 
-                                   format(world$Confirmed, decimal.mark=",",
-                                          big.mark=".",small.mark="."),"<br>",
-                                   "População: ", round(world$pop_est/1000000,2)," Mi")) %>% 
-  addLegend(position = "bottomright", pal = greensNA, values = ~Confirmed/1000, 
-            title="Casos Confirmados<br>(em milhares)", na.label = "", 
-            opacity = 1) %>% setView(lat=15, lng=10, zoom=2)
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ greens(Confirmed / 1000),
+      color = "green", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        world$name_long, ": ",
+        format(world$Confirmed,
+          decimal.mark = ",",
+          big.mark = ".", small.mark = "."
+        ), "<br>",
+        "População: ", round(world$pop_est / 1000000, 2), " Mi"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = greensNA, values = ~ Confirmed / 1000,
+      title = "Casos Confirmados<br>(em milhares)", na.label = "",
+      opacity = 1
+    ) %>%
+    setView(lat = 15, lng = 10, zoom = 2)
 })
-
 ```
 
 ##### Casos por Habitantes
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  greens = colorNumeric("Greens", domain = world$Confirmed_pop)
-  greensNA <- colorNumeric("Greens", domain = world$Confirmed_pop, na.color=rgb(0,0,0,0))
+  greens <- colorNumeric("Greens", domain = world$Confirmed_pop)
+  greensNA <- colorNumeric("Greens", domain = world$Confirmed_pop, na.color = rgb(0, 0, 0, 0))
   leaflet(data = world) %>%
-  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-           attribution = paste(
-             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-           )
-  ) %>% addPolygons(weight = 0.1, fillColor = ~greens(Confirmed_pop),
-                    color = "green",fillOpacity = 0.9,
-                    smoothFactor = 0.5,
-                    popup = paste0(world$name_long,": ", 
-                                   format(round(world$Confirmed_pop,2), 
-                                          decimal.mark=",", big.mark=".",
-                                          small.mark="."),"<br>",
-                                   "População: ", round(world$pop_est/1000000,2)," Mi")) %>% 
-  addLegend(position = "bottomright", pal = greensNA, values = ~Confirmed_pop, 
-            title="Casos Confirmados<br>(por 100 mil<br>habitantes)", na.label = "", 
-            opacity = 1) %>% setView(lat=15, lng=10, zoom=2)
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ greens(Confirmed_pop),
+      color = "green", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        world$name_long, ": ",
+        format(round(world$Confirmed_pop, 2),
+          decimal.mark = ",", big.mark = ".",
+          small.mark = "."
+        ), "<br>",
+        "População: ", round(world$pop_est / 1000000, 2), " Mi"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = greensNA, values = ~Confirmed_pop,
+      title = "Casos Confirmados<br>(por 100 mil<br>habitantes)", na.label = "",
+      opacity = 1
+    ) %>%
+    setView(lat = 15, lng = 10, zoom = 2)
 })
 ```
 
@@ -262,23 +307,33 @@ renderLeaflet({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  reds = colorNumeric("Reds", domain = world$Deaths)
-  redsNA <- colorNumeric("Reds", domain = world$Deaths, na.color=rgb(0,0,0,0))
+  reds <- colorNumeric("Reds", domain = world$Deaths)
+  redsNA <- colorNumeric("Reds", domain = world$Deaths, na.color = rgb(0, 0, 0, 0))
   leaflet(data = world) %>%
-  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-           attribution = paste(
-             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-           )
-  ) %>% addPolygons(weight = 0.1, fillColor = ~reds(Deaths),
-                    color = "reds",fillOpacity = 0.9,
-                    smoothFactor = 0.5,
-                    popup = paste0(world$name_long,": ", 
-                                   format(world$Deaths, decimal.mark=",",
-                                          big.mark=".",small.mark="."),"<br>",
-                                   "População: ", round(world$pop_est/1000000,2)," Mi")) %>% 
-  addLegend(position = "bottomright", pal = redsNA, values = ~Deaths, 
-            title="Óbitos", na.label = "", opacity = 1) %>% setView(lat=15, lng=10, zoom=2)
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ reds(Deaths),
+      color = "reds", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        world$name_long, ": ",
+        format(world$Deaths,
+          decimal.mark = ",",
+          big.mark = ".", small.mark = "."
+        ), "<br>",
+        "População: ", round(world$pop_est / 1000000, 2), " Mi"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = redsNA, values = ~Deaths,
+      title = "Óbitos", na.label = "", opacity = 1
+    ) %>%
+    setView(lat = 15, lng = 10, zoom = 2)
 })
 ```
 
@@ -286,33 +341,43 @@ renderLeaflet({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  reds = colorNumeric("Reds", domain = world$Deaths_pop)
-  redsNA <- colorNumeric("Reds", domain = world$Deaths_pop, na.color=rgb(0,0,0,0))
+  reds <- colorNumeric("Reds", domain = world$Deaths_pop)
+  redsNA <- colorNumeric("Reds", domain = world$Deaths_pop, na.color = rgb(0, 0, 0, 0))
   leaflet(data = world) %>%
-  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-           attribution = paste(
-             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-           )
-  ) %>% addPolygons(weight = 0.1, fillColor = ~reds(Deaths_pop),
-                    color = "reds",fillOpacity = 0.9,
-                    smoothFactor = 0.5,
-                    popup = paste0(world$name_long,": ", 
-                                   format(round(world$Deaths_pop, 2), 
-                                          decimal.mark=",", big.mark=".",
-                                          small.mark="."),"<br>",
-                                   "População: ", round(world$pop_est/1000000,2)," Mi")) %>% 
-  addLegend(position = "bottomright", pal = redsNA, values = ~Deaths_pop, 
-            title="Óbitos<br>(por 100 mil<br>habitantes)", na.label = "", opacity = 1) %>% setView(lat=15, lng=10, zoom=2)
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ reds(Deaths_pop),
+      color = "reds", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        world$name_long, ": ",
+        format(round(world$Deaths_pop, 2),
+          decimal.mark = ",", big.mark = ".",
+          small.mark = "."
+        ), "<br>",
+        "População: ", round(world$pop_est / 1000000, 2), " Mi"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = redsNA, values = ~Deaths_pop,
+      title = "Óbitos<br>(por 100 mil<br>habitantes)", na.label = "", opacity = 1
+    ) %>%
+    setView(lat = 15, lng = 10, zoom = 2)
 })
 ```
 
 ##### Taxa de Letalidade
 
 ```{r}
-a <- paste0(format(round((100*world$Deaths[world$name_long=='Yemen']/world$Confirmed[world$name_long=='Yemen']),2), 
-                                          decimal.mark=",", big.mark=".",
-                                          small.mark="."),"%")
+a <- paste0(format(round((100 * world$Deaths[world$name_long == "Yemen"] / world$Confirmed[world$name_long == "Yemen"]), 2),
+  decimal.mark = ",", big.mark = ".",
+  small.mark = "."
+), "%")
 ```
 
 
@@ -320,25 +385,36 @@ O **Iêmen** (`r a`) foi **desconsiderado** no mapa abaixo por apresentar taxa d
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  reds = colorNumeric("YlOrRd", domain = 100*world_4$Deaths/world_4$Confirmed)
-  redsNA <- colorNumeric("YlOrRd", domain = 100*world_4$Deaths/world_4$Confirmed,
-                       na.color=rgb(0,0,0,0))
+  reds <- colorNumeric("YlOrRd", domain = 100 * world_4$Deaths / world_4$Confirmed)
+  redsNA <- colorNumeric("YlOrRd",
+    domain = 100 * world_4$Deaths / world_4$Confirmed,
+    na.color = rgb(0, 0, 0, 0)
+  )
   leaflet(data = world_4) %>%
-  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-           attribution = paste(
-             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-           )
-  ) %>% addPolygons(weight = 0.1, fillColor = ~reds(100*Deaths/Confirmed),
-                    color = "reds",fillOpacity = 0.9,
-                    smoothFactor = 0.5,
-                    popup = paste0(world_4$name_long,": ", 
-                                   format(round(100*world_4$Deaths/world_4$Confirmed,2),
-                                          decimal.mark=",", big.mark=".",
-                                          small.mark="."),"%","<br>",
-                                   "População: ", round(world_4$pop_est/1000000,2)," Mi")) %>% 
-  addLegend(position = "bottomright", pal = redsNA, values = ~100*Deaths/Confirmed, 
-            title="Taxa de<br>Letalidade (%)", na.label = "", opacity = 1) %>% setView(lat=15, lng=10, zoom=2)
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ reds(100 * Deaths / Confirmed),
+      color = "reds", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        world_4$name_long, ": ",
+        format(round(100 * world_4$Deaths / world_4$Confirmed, 2),
+          decimal.mark = ",", big.mark = ".",
+          small.mark = "."
+        ), "%", "<br>",
+        "População: ", round(world_4$pop_est / 1000000, 2), " Mi"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = redsNA, values = ~ 100 * Deaths / Confirmed,
+      title = "Taxa de<br>Letalidade (%)", na.label = "", opacity = 1
+    ) %>%
+    setView(lat = 15, lng = 10, zoom = 2)
 })
 ```
 
@@ -348,25 +424,34 @@ As informações sobre pacientes recuperados não são divulgadas por todos os p
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  reds = colorNumeric("Reds", domain = world$Treatment_pop)
-  redsNA <- colorNumeric("Reds", domain = world$Treatment_pop, na.color=rgb(0,0,0,0))
+  reds <- colorNumeric("Reds", domain = world$Treatment_pop)
+  redsNA <- colorNumeric("Reds", domain = world$Treatment_pop, na.color = rgb(0, 0, 0, 0))
   leaflet(data = world) %>%
-  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-           attribution = paste(
-             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-           )
-  ) %>% addPolygons(weight = 0.1, fillColor = ~reds(Treatment_pop),
-                    color = "reds",fillOpacity = 0.9,
-                    smoothFactor = 0.5,
-                    popup = paste0(world$name_long,": ", 
-                                   format(round(world$Treatment_pop, 2), 
-                                          decimal.mark=",", big.mark=".",
-                                          small.mark="."),"<br>",
-                                   "População: ", round(world$pop_est/1000000,2)," Mi", 
-                                   "<br>", world$IND_INFO)) %>% 
-  addLegend(position = "bottomright", pal = redsNA, values = ~Treatment_pop, 
-            title="Pessoas em<br>Tratamento<br>(por 100 mil<br>habitantes)", na.label = "", opacity = 1) %>% setView(lat=15, lng=10, zoom=2)
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ reds(Treatment_pop),
+      color = "reds", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        world$name_long, ": ",
+        format(round(world$Treatment_pop, 2),
+          decimal.mark = ",", big.mark = ".",
+          small.mark = "."
+        ), "<br>",
+        "População: ", round(world$pop_est / 1000000, 2), " Mi",
+        "<br>", world$IND_INFO
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = redsNA, values = ~Treatment_pop,
+      title = "Pessoas em<br>Tratamento<br>(por 100 mil<br>habitantes)", na.label = "", opacity = 1
+    ) %>%
+    setView(lat = 15, lng = 10, zoom = 2)
 })
 ```
 
@@ -376,79 +461,106 @@ renderLeaflet({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderDataTable({
-  tabela <- 
-    world %>% st_as_sf() %>% st_drop_geometry() %>% 
-    mutate(Confirmed=replace_na(Confirmed,0),
-           Deaths=replace_na(Deaths,0),
-           Confirmed_pop=replace_na(Confirmed_pop,0),
-           Deaths_pop=replace_na(Deaths_pop,0),
-           Treatment_pop=replace_na(Treatment_pop,0)) %>% 
-    mutate(Tax_Let=
-             case_when(
-      round(100*Deaths/Confirmed,2)<10 ~ paste0('0',ifelse(Confirmed==0,0,round(100*Deaths/Confirmed,2)),"%"),
-      TRUE ~ paste0(ifelse(Confirmed==0,0,round(100*Deaths/Confirmed,2)),"%")
+  tabela <-
+    world %>%
+    st_as_sf() %>%
+    st_drop_geometry() %>%
+    mutate(
+      Confirmed = replace_na(Confirmed, 0),
+      Deaths = replace_na(Deaths, 0),
+      Confirmed_pop = replace_na(Confirmed_pop, 0),
+      Deaths_pop = replace_na(Deaths_pop, 0),
+      Treatment_pop = replace_na(Treatment_pop, 0)
+    ) %>%
+    mutate(
+      Tax_Let =
+        case_when(
+          round(100 * Deaths / Confirmed, 2) < 10 ~ paste0("0", ifelse(Confirmed == 0, 0, round(100 * Deaths / Confirmed, 2)), "%"),
+          TRUE ~ paste0(ifelse(Confirmed == 0, 0, round(100 * Deaths / Confirmed, 2)), "%")
+        ),
+      Confirmed = format(Confirmed,
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
       ),
-           Confirmed=format(Confirmed, decimal.mark=".", big.mark=",", 
-                            small.mark=","),
-           Deaths=format(Deaths, decimal.mark=".", big.mark=",", 
-                         small.mark=","),
-           Confirmed_pop=format(round(Confirmed_pop,2), decimal.mark=".", big.mark=",", 
-                                small.mark=","),
-           Deaths_pop=format(round(Deaths_pop,2), decimal.mark=".", big.mark=",", 
-                             small.mark=","),
-           Treatment_pop=format(round(Treatment_pop,2), decimal.mark=".", big.mark=",", 
-                                small.mark=","),
-           pop_est=format(pop_est, decimal.mark=".", big.mark=",", 
-                          small.mark=",")) %>% 
-    select(name_long, Confirmed, Confirmed_pop, Deaths, Deaths_pop, Tax_Let, 
-           Treatment_pop, pop_est) %>% 
+      Deaths = format(Deaths,
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      ),
+      Confirmed_pop = format(round(Confirmed_pop, 2),
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      ),
+      Deaths_pop = format(round(Deaths_pop, 2),
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      ),
+      Treatment_pop = format(round(Treatment_pop, 2),
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      ),
+      pop_est = format(pop_est,
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      )
+    ) %>%
+    select(
+      name_long, Confirmed, Confirmed_pop, Deaths, Deaths_pop, Tax_Let,
+      Treatment_pop, pop_est
+    ) %>%
     datatable(
-      colnames=c("País", "Casos Acumulados", "Casos (Por 100 Mil Hab.)","Óbitos Acumulados", "Óbitos (Por 100 Mil Hab.)", "Taxa de Letalidade", "Pacientes em Tratamento (Por 100 Mil Hab.)", "População Estimada"), 
-              options = list(order=list(list(1, 'desc'))), rownames = F, style = 'bootstrap')
-  
-  
+      colnames = c("País", "Casos Acumulados", "Casos (Por 100 Mil Hab.)", "Óbitos Acumulados", "Óbitos (Por 100 Mil Hab.)", "Taxa de Letalidade", "Pacientes em Tratamento (Por 100 Mil Hab.)", "População Estimada"),
+      options = list(order = list(list(1, "desc"))), rownames = F, style = "bootstrap"
+    )
 })
 ```
 
 ```{r}
-covid_week <- covid %>% mutate(semanaEpi=epiweek(date)) %>% 
-  group_by(Country_Region, semanaEpi) %>% 
-  summarise(Confirmed = sum(Confirmed),
-            Deaths = sum(Deaths),
-            New_Confirmed = sum(New_Confirmed),
-            New_Deaths = sum(New_Deaths)
+covid_week <- covid %>%
+  mutate(semanaEpi = epiweek(date)) %>%
+  group_by(Country_Region, semanaEpi) %>%
+  summarise(
+    Confirmed = sum(Confirmed),
+    Deaths = sum(Deaths),
+    New_Confirmed = sum(New_Confirmed),
+    New_Deaths = sum(New_Deaths)
   )
 
 
-covid_cont_week <- covid_cont %>% mutate(semanaEpi=epiweek(date)) %>% 
-  group_by(continent, semanaEpi) %>% 
-  summarise(Confirmed = sum(Confirmed),
-            Deaths = sum(Deaths),
-            New_Confirmed = sum(New_Confirmed),
-            New_Deaths = sum(New_Deaths)
+covid_cont_week <- covid_cont %>%
+  mutate(semanaEpi = epiweek(date)) %>%
+  group_by(continent, semanaEpi) %>%
+  summarise(
+    Confirmed = sum(Confirmed),
+    Deaths = sum(Deaths),
+    New_Confirmed = sum(New_Confirmed),
+    New_Deaths = sum(New_Deaths)
   )
 
 
-covid_world_week <- covid_world %>% mutate(semanaEpi=epiweek(date)) %>% 
-  group_by(semanaEpi) %>% 
-  summarise(Confirmed = sum(Confirmed),
-            Deaths = sum(Deaths),
-            New_Confirmed = sum(New_Confirmed),
-            New_Deaths = sum(New_Deaths)
+covid_world_week <- covid_world %>%
+  mutate(semanaEpi = epiweek(date)) %>%
+  group_by(semanaEpi) %>%
+  summarise(
+    Confirmed = sum(Confirmed),
+    Deaths = sum(Deaths),
+    New_Confirmed = sum(New_Confirmed),
+    New_Deaths = sum(New_Deaths)
   )
 ```
 
 
 ```{r}
-darktheme <- theme_minimal() + theme(plot.title = element_text(color = "#c8c8c8"),
-                                    axis.title.x = element_text(colour = "#c8c8c8"),
-                                    axis.title.y = element_text(colour = "#c8c8c8"),
-                                    panel.background = element_rect(fill="#272b30"),
-                                    axis.text.x = element_text(colour = "#c8c8c8"),
-                                    axis.text.y = element_text(colour = "#c8c8c8"),
-                                    plot.background = element_rect(fill = "#272b30"),
-                                    legend.title = element_text(colour = "#c8c8c8"),
-                                    legend.text = element_text(colour = "#c8c8c8"))
+darktheme <- theme_minimal() + theme(
+  plot.title = element_text(color = "#c8c8c8"),
+  axis.title.x = element_text(colour = "#c8c8c8"),
+  axis.title.y = element_text(colour = "#c8c8c8"),
+  panel.background = element_rect(fill = "#272b30"),
+  axis.text.x = element_text(colour = "#c8c8c8"),
+  axis.text.y = element_text(colour = "#c8c8c8"),
+  plot.background = element_rect(fill = "#272b30"),
+  legend.title = element_text(colour = "#c8c8c8"),
+  legend.text = element_text(colour = "#c8c8c8")
+)
 ```
 
 
@@ -456,11 +568,14 @@ darktheme <- theme_minimal() + theme(plot.title = element_text(color = "#c8c8c8"
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 tags$div(selectizeInput(
-  'paises', label = 'Escolha Até 6 Países:',
-  choices = sort(unique(covid$Country_Region)), 
-  selected = (covid %>% filter(date==max(date)) %>% arrange(desc(Confirmed)))$Country_Region[1:6], 
-  width='1000px', multiple=T, options = list(maxItems = 6)), 
-  style="display:inline-block")
+  "paises",
+  label = "Escolha Até 6 Países:",
+  choices = sort(unique(covid$Country_Region)),
+  selected = (covid %>% filter(date == max(date)) %>% arrange(desc(Confirmed)))$Country_Region[1:6],
+  width = "1000px", multiple = T, options = list(maxItems = 6)
+),
+style = "display:inline-block"
+)
 ```
 
 
@@ -469,16 +584,29 @@ tags$div(selectizeInput(
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  d <- covid %>% filter(date==max(date)) %>% filter(Country_Region %in% input$paises)
-  
-  ggplotly(ggplot(data = d, aes(x=reorder(Country_Region, -Confirmed), 
-                                y=Confirmed/1000000, fill=Country_Region,
-                                text=paste0(Country_Region,": ",
-                                            format(Confirmed, decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-  geom_bar(stat="identity") + coord_flip() + xlab("") + 
-  ylab("Casos Acumulados (em milhões)") + darktheme + theme(legend.position = "none") +
-  ggtitle("Casos Acumulados") + scale_fill_hue(l=40), tooltip = "text") 
+  d <- covid %>%
+    filter(date == max(date)) %>%
+    filter(Country_Region %in% input$paises)
+
+  ggplotly(ggplot(data = d, aes(
+    x = reorder(Country_Region, -Confirmed),
+    y = Confirmed / 1000000, fill = Country_Region,
+    text = paste0(
+      Country_Region, ": ",
+      format(Confirmed,
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    )
+  )) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    xlab("") +
+    ylab("Casos Acumulados (em milhões)") +
+    darktheme +
+    theme(legend.position = "none") +
+    ggtitle("Casos Acumulados") +
+    scale_fill_hue(l = 40), tooltip = "text")
 })
 ```
 
@@ -486,16 +614,20 @@ renderPlotly({
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- covid %>% filter(Country_Region %in% input$paises)
-  
-  ggplotly(ggplot(data = d, aes(x=date, y=Confirmed/1000000, color=Country_Region)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(Confirmed/1000000,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    xlab("") + 
-  ylab("Casos Confirmados (em milhões)") + 
-  ggtitle("Evolução: Casos Acumulados") + darktheme + labs(color="") + theme(legend.position="bottom") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
-  
+
+  ggplotly(ggplot(data = d, aes(x = date, y = Confirmed / 1000000, color = Country_Region)) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(Confirmed / 1000000, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    xlab("") +
+    ylab("Casos Confirmados (em milhões)") +
+    ggtitle("Evolução: Casos Acumulados") +
+    darktheme +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -503,63 +635,88 @@ renderPlotly({
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- covid %>% filter(Country_Region %in% input$paises)
-  ggplotly(ggplot(data = d, aes(x=date, y=New_Confirmed, color=Country_Region)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(New_Confirmed,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    xlab("") + 
-  ylab("Novos Casos") + 
-  ggtitle("Novos Casos Diários") + darktheme + labs(color="") + theme(legend.position="bottom")  +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(data = d, aes(x = date, y = New_Confirmed, color = Country_Region)) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(New_Confirmed, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    xlab("") +
+    ylab("Novos Casos") +
+    ggtitle("Novos Casos Diários") +
+    darktheme +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- covid_week %>% filter(Country_Region %in% input$paises)
-  ggplotly(ggplot(data = d, aes(x=semanaEpi, y=New_Confirmed/1000, color=Country_Region)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(semanaEpi,": ",format(round(New_Confirmed/1000,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    xlab("Semana Epidemiológica") + 
-  ylab("Novos Casos (em milhares)") + 
-  ggtitle("Novos Casos por Semana Epidemiológica") + darktheme + labs(color="") + 
-    theme(legend.position="bottom")  +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(data = d, aes(x = semanaEpi, y = New_Confirmed / 1000, color = Country_Region)) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(semanaEpi, ": ", format(round(New_Confirmed / 1000, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    xlab("Semana Epidemiológica") +
+    ylab("Novos Casos (em milhares)") +
+    ggtitle("Novos Casos por Semana Epidemiológica") +
+    darktheme +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 ##### Casos Por Habitantes
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  d <- covid %>% filter(date==max(date)) %>% filter(Country_Region %in% input$paises)
-  ggplotly(ggplot(data = d, aes(x=reorder(Country_Region, -Confirmed/pop_est), 
-                                y=100000*Confirmed/pop_est, fill=Country_Region, 
-                                text=paste0(Country_Region,": ",
-                                            format(100000*Confirmed/pop_est, decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-  geom_bar(stat="identity") + coord_flip() + xlab("") + 
-  ylab("Casos por 100 Mil Habitantes") + darktheme + theme(legend.position = "none") +
-  ggtitle("Casos Acumulados por 100 Mil Habitantes") + scale_fill_hue(l=40), tooltip = "text")
+  d <- covid %>%
+    filter(date == max(date)) %>%
+    filter(Country_Region %in% input$paises)
+  ggplotly(ggplot(data = d, aes(
+    x = reorder(Country_Region, -Confirmed / pop_est),
+    y = 100000 * Confirmed / pop_est, fill = Country_Region,
+    text = paste0(
+      Country_Region, ": ",
+      format(100000 * Confirmed / pop_est,
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    )
+  )) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    xlab("") +
+    ylab("Casos por 100 Mil Habitantes") +
+    darktheme +
+    theme(legend.position = "none") +
+    ggtitle("Casos Acumulados por 100 Mil Habitantes") +
+    scale_fill_hue(l = 40), tooltip = "text")
 })
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- covid %>% filter(Country_Region %in% input$paises)
-  ggplotly(ggplot(data = d, aes(x=date, y=100000*Confirmed/pop_est,
-                                color=Country_Region)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(100000*Confirmed/pop_est,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme + xlab("") + 
-  ylab("Casos (por 100 mil habitantes)") + 
-  ggtitle("Evolução: Casos Acumulados por 100 Mil Habitantes") +
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(data = d, aes(
+    x = date, y = 100000 * Confirmed / pop_est,
+    color = Country_Region
+  )) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(100000 * Confirmed / pop_est, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("") +
+    ylab("Casos (por 100 mil habitantes)") +
+    ggtitle("Evolução: Casos Acumulados por 100 Mil Habitantes") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -567,61 +724,91 @@ renderPlotly({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  d <- covid %>% filter(date==max(date)) %>% filter(Country_Region %in% input$paises)
-  ggplotly(ggplot(data = d, aes(x=reorder(Country_Region, -Deaths), 
-                                y=Deaths/1000, fill=Country_Region, 
-                                text=paste0(Country_Region,": ",
-                                            format(Deaths, decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-  geom_bar(stat="identity") + coord_flip() + xlab("") + 
-  ylab("Óbitos (em milhares)") + darktheme + theme(legend.position = "none") +
-  ggtitle("Óbitos Acumulados") + scale_fill_hue(l=40), tooltip = "text")
+  d <- covid %>%
+    filter(date == max(date)) %>%
+    filter(Country_Region %in% input$paises)
+  ggplotly(ggplot(data = d, aes(
+    x = reorder(Country_Region, -Deaths),
+    y = Deaths / 1000, fill = Country_Region,
+    text = paste0(
+      Country_Region, ": ",
+      format(Deaths,
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    )
+  )) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    xlab("") +
+    ylab("Óbitos (em milhares)") +
+    darktheme +
+    theme(legend.position = "none") +
+    ggtitle("Óbitos Acumulados") +
+    scale_fill_hue(l = 40), tooltip = "text")
 })
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- covid %>% filter(Country_Region %in% input$paises)
-  ggplotly(ggplot(data = d, aes(x=date, y=Deaths/1000, color=Country_Region)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(Deaths/1000,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme + xlab("") + 
-  ylab("Óbitos (em milhares)") + 
-  ggtitle("Evolução: Óbitos Acumulados") + labs(color="") + 
-    theme(legend.position="bottom") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(data = d, aes(x = date, y = Deaths / 1000, color = Country_Region)) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(Deaths / 1000, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("") +
+    ylab("Óbitos (em milhares)") +
+    ggtitle("Evolução: Óbitos Acumulados") +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- covid %>% filter(Country_Region %in% input$paises)
-  ggplotly(ggplot(data = d, 
-       aes(x=date, y=New_Deaths, color=Country_Region)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(New_Deaths,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme + xlab("") + 
-  ylab("Novos Óbitos") + 
-  ggtitle("Novos Óbitos") + labs(color="") + theme(legend.position="bottom") +
-  scale_color_hue(l=40), tooltip = "text")  %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(
+    data = d,
+    aes(x = date, y = New_Deaths, color = Country_Region)
+  ) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(New_Deaths, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("") +
+    ylab("Novos Óbitos") +
+    ggtitle("Novos Óbitos") +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- covid_week %>% filter(Country_Region %in% input$paises)
-  ggplotly(ggplot(data = d, 
-       aes(x=semanaEpi, y=New_Deaths, color=Country_Region)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(semanaEpi,": ",format(round(New_Deaths,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme + xlab("Semana Epidemiológica") + 
-  ylab("Novos Óbitos") + 
-  ggtitle("Novos Óbitos por Semana Epidemiológica") + labs(color="") + 
-    theme(legend.position="bottom") +
-  scale_color_hue(l=40), tooltip = "text")  %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(
+    data = d,
+    aes(x = semanaEpi, y = New_Deaths, color = Country_Region)
+  ) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(semanaEpi, ": ", format(round(New_Deaths, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("Semana Epidemiológica") +
+    ylab("Novos Óbitos") +
+    ggtitle("Novos Óbitos por Semana Epidemiológica") +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -630,31 +817,49 @@ renderPlotly({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  d <- covid %>% filter(date==max(date)) %>% filter(Country_Region %in% input$paises)
-  ggplotly(ggplot(data = d, aes(x=reorder(Country_Region, -Deaths/pop_est), 
-                                y=100000*Deaths/pop_est, fill=Country_Region, 
-                                text=paste0(Country_Region,": ",
-                                            format(round(100000*Deaths/pop_est,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-  geom_bar(stat="identity") + coord_flip() + xlab("") + 
-  ylab("Óbitos por 100 Mil Habitantes") + darktheme + theme(legend.position = "none") +
-  ggtitle("Óbitos Acumulados por 100 Mil Habitantes") + scale_fill_hue(l=40), tooltip = "text")
+  d <- covid %>%
+    filter(date == max(date)) %>%
+    filter(Country_Region %in% input$paises)
+  ggplotly(ggplot(data = d, aes(
+    x = reorder(Country_Region, -Deaths / pop_est),
+    y = 100000 * Deaths / pop_est, fill = Country_Region,
+    text = paste0(
+      Country_Region, ": ",
+      format(round(100000 * Deaths / pop_est, 2),
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    )
+  )) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    xlab("") +
+    ylab("Óbitos por 100 Mil Habitantes") +
+    darktheme +
+    theme(legend.position = "none") +
+    ggtitle("Óbitos Acumulados por 100 Mil Habitantes") +
+    scale_fill_hue(l = 40), tooltip = "text")
 })
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- covid %>% filter(Country_Region %in% input$paises)
-  ggplotly(ggplot(data = d, 
-                aes(x=date, y=100000*Deaths/pop_est, color=Country_Region)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(100000*Deaths/pop_est,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme + xlab("") + 
-  ylab("Óbitos (por 100 mil habitantes)") + 
-  ggtitle("Evolução: Óbitos Acumulados (por 100 mil habitantes)") +
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(
+    data = d,
+    aes(x = date, y = 100000 * Deaths / pop_est, color = Country_Region)
+  ) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(100000 * Deaths / pop_est, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("") +
+    ylab("Óbitos (por 100 mil habitantes)") +
+    ggtitle("Evolução: Óbitos Acumulados (por 100 mil habitantes)") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -671,75 +876,88 @@ renderPlotly({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_cont %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America" )
-       , aes(x=date, y=Confirmed/1000, color=continent)) +
-  geom_line(size=1) +
-    geom_point(size=.8, aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(Confirmed/1000,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
+  ggplotly(ggplot(
+    data = covid_cont %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America"),
+    aes(x = date, y = Confirmed / 1000, color = continent)
+  ) +
+    geom_line(size = 1) +
+    geom_point(size = .8, aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(Confirmed / 1000, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
     darktheme +
-  ggtitle("") + xlab("") + 
-  ylab("Casos Confirmados (em milhares)") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+    ggtitle("") +
+    xlab("") +
+    ylab("Casos Confirmados (em milhares)") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
-
 ```
 
 ##### Casos por Habitantes
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_cont %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America" )
-       , aes(x=date, y=100000*Confirmed/pop_est, color=continent)) +
-  geom_line(size=1) + 
-    geom_point(size=.8, aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(100000*Confirmed/pop_est,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
+  ggplotly(ggplot(
+    data = covid_cont %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America"),
+    aes(x = date, y = 100000 * Confirmed / pop_est, color = continent)
+  ) +
+    geom_line(size = 1) +
+    geom_point(size = .8, aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(100000 * Confirmed / pop_est, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
     darktheme +
-  xlab("") + 
-  ylab("Casos Confirmados (por 
-100 mil habitantes)") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+    xlab("") +
+    ylab("Casos Confirmados (por 
+100 mil habitantes)") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
-
 ```
 
 ##### Novos Casos Diários
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_cont %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America" )
-       , aes(x=date, y=New_Confirmed, color=continent)) +
-  geom_line(size=.8) + 
-    geom_point(size=.8, aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(New_Confirmed,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
+  ggplotly(ggplot(
+    data = covid_cont %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America"),
+    aes(x = date, y = New_Confirmed, color = continent)
+  ) +
+    geom_line(size = .8) +
+    geom_point(size = .8, aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(New_Confirmed, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
     darktheme +
-  ggtitle("Novos Casos Diários") + xlab("") + 
-  ylab("Novos Casos") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+    ggtitle("Novos Casos Diários") +
+    xlab("") +
+    ylab("Novos Casos") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
-
 ```
 
 ##### Novos Casos Semanais
 
 ```{r}
 renderPlotly({
-  ggplotly(ggplot(data=covid_cont_week %>% 
-                  filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America" )
-                , aes(x=semanaEpi, y=New_Confirmed/1000, color=continent)) +
-           geom_line(size=.8) + 
-           geom_point(size=.8, aes(text=paste0(semanaEpi,": ",format(round(New_Confirmed/1000,2), decimal.mark=",", big.mark=".",
-                                                                     small.mark=".")))) + 
-           darktheme +
-           ggtitle("") + xlab("Semana Epidemiológica") + 
-           ylab("Novos Casos (em milhares)") + 
-           labs(color="") +
-           scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(
+    data = covid_cont_week %>%
+      filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America"),
+    aes(x = semanaEpi, y = New_Confirmed / 1000, color = continent)
+  ) +
+    geom_line(size = .8) +
+    geom_point(size = .8, aes(text = paste0(semanaEpi, ": ", format(round(New_Confirmed / 1000, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    ggtitle("") +
+    xlab("Semana Epidemiológica") +
+    ylab("Novos Casos (em milhares)") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -752,18 +970,22 @@ renderPlotly({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_cont %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America" )
-       , aes(x=date, y=Deaths/1000, color=continent)) +
-  geom_line(size=1) + 
-    geom_point(size=.8, aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(Deaths/1000,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
+  ggplotly(ggplot(
+    data = covid_cont %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America"),
+    aes(x = date, y = Deaths / 1000, color = continent)
+  ) +
+    geom_line(size = 1) +
+    geom_point(size = .8, aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(Deaths / 1000, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
     darktheme +
-  ggtitle("") + xlab("") + 
-  ylab("Óbitos (em milhares)") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+    ggtitle("") +
+    xlab("") +
+    ylab("Óbitos (em milhares)") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 
@@ -771,53 +993,65 @@ renderPlotly({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_cont %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America" )
-       , aes(x=date, y=100000*Deaths/pop_est, color=continent)) +
-  geom_line(size=1) + 
-    geom_point(size=.8, aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(100000*Deaths/pop_est,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
+  ggplotly(ggplot(
+    data = covid_cont %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America"),
+    aes(x = date, y = 100000 * Deaths / pop_est, color = continent)
+  ) +
+    geom_line(size = 1) +
+    geom_point(size = .8, aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(100000 * Deaths / pop_est, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
     darktheme +
-  xlab("") + 
-  ylab("Óbitos(por 100
-mil habitantes)") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+    xlab("") +
+    ylab("Óbitos(por 100
+mil habitantes)") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 ##### Novos Óbitos Diários
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_cont %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America" )
-       , aes(x=date, y=New_Deaths, color=continent)) +
-  geom_line(size=.8) + 
-    geom_point(size=.8, aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(New_Deaths,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
+  ggplotly(ggplot(
+    data = covid_cont %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America"),
+    aes(x = date, y = New_Deaths, color = continent)
+  ) +
+    geom_line(size = .8) +
+    geom_point(size = .8, aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(New_Deaths, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
     darktheme +
-  ggtitle("") + xlab("") + 
-  ylab("Novos Óbitos") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+    ggtitle("") +
+    xlab("") +
+    ylab("Novos Óbitos") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 ##### Novos Óbitos Semanais
 
 ```{r}
 renderPlotly({
-  ggplotly(ggplot(data=covid_cont_week %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America" )
-       , aes(x=semanaEpi, y=New_Deaths, color=continent)) +
-  geom_line(size=.8) + 
-    geom_point(size=.8, aes(text=paste0(semanaEpi,": ",format(round(New_Deaths,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
+  ggplotly(ggplot(
+    data = covid_cont_week %>% filter(continent == "Africa" | continent == "Asia" | continent == "Europe" | continent == "North America" | continent == "Oceania" | continent == "South America"),
+    aes(x = semanaEpi, y = New_Deaths, color = continent)
+  ) +
+    geom_line(size = .8) +
+    geom_point(size = .8, aes(text = paste0(semanaEpi, ": ", format(round(New_Deaths, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
     darktheme +
-  ggtitle("") + xlab("Semana Epidemiológica") + 
-  ylab("Novos Óbitos") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+    ggtitle("") +
+    xlab("Semana Epidemiológica") +
+    ylab("Novos Óbitos") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -835,58 +1069,67 @@ renderPlotly({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_world, aes(x=date, y=Confirmed/1000000)) +
-           geom_line(size=0.8, color="darkgreen") + 
-    geom_point(size=0.8, color="darkgreen", 
-               aes(text=paste0(format(date, "%d %b %Y"),": ",round(Confirmed/1000000,2)))) + 
+  ggplotly(ggplot(data = covid_world, aes(x = date, y = Confirmed / 1000000)) +
+    geom_line(size = 0.8, color = "darkgreen") +
+    geom_point(
+      size = 0.8, color = "darkgreen",
+      aes(text = paste0(format(date, "%d %b %Y"), ": ", round(Confirmed / 1000000, 2)))
+    ) +
     darktheme +
-  ggtitle("") + xlab("") + ylab("Casos Acumulados (em milhões)") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+    ggtitle("") +
+    xlab("") +
+    ylab("Casos Acumulados (em milhões)") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 ##### Casos por Habitantes
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_world, aes(x=date, y=100000*Confirmed/pop_est)) +
-  geom_line(size=1, color="darkgreen") + 
-    geom_point(size=.8, color="darkgreen", aes(text=paste0(format(date, "%d %b %Y"),": ",format(round(100000*Confirmed/pop_est,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
+  ggplotly(ggplot(data = covid_world, aes(x = date, y = 100000 * Confirmed / pop_est)) +
+    geom_line(size = 1, color = "darkgreen") +
+    geom_point(size = .8, color = "darkgreen", aes(text = paste0(format(date, "%d %b %Y"), ": ", format(round(100000 * Confirmed / pop_est, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
     darktheme +
-  xlab("") + 
-  ylab("Casos Confirmados (por 
-100 mil habitantes)") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+    xlab("") +
+    ylab("Casos Confirmados (por 
+100 mil habitantes)") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 ##### Novos Casos Diários
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_world, aes(x=date, y=New_Confirmed/1000)) + geom_point(color="darkgreen", aes(text=paste0(format(date, "%d %b %Y"),": ",round(New_Confirmed/1000,2)))) +
-  geom_line(size=0.8, color="darkgreen") + darktheme +
-  ggtitle("") + xlab("") + ylab("Casos Novos (em milhares)") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(data = covid_world, aes(x = date, y = New_Confirmed / 1000)) +
+    geom_point(color = "darkgreen", aes(text = paste0(format(date, "%d %b %Y"), ": ", round(New_Confirmed / 1000, 2)))) +
+    geom_line(size = 0.8, color = "darkgreen") +
+    darktheme +
+    ggtitle("") +
+    xlab("") +
+    ylab("Casos Novos (em milhares)") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 ##### Novos Casos Semanais
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_world_week, aes(x=semanaEpi, y=New_Confirmed/1000)) + 
-           geom_point(color="darkgreen", aes(text=paste0(semanaEpi,": ",round(New_Confirmed/1000,2)))) +
-  geom_line(size=0.8, color="darkgreen") + darktheme +
-  ggtitle("") + xlab("") + ylab("Casos Novos (em milhares)") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(data = covid_world_week, aes(x = semanaEpi, y = New_Confirmed / 1000)) +
+    geom_point(color = "darkgreen", aes(text = paste0(semanaEpi, ": ", round(New_Confirmed / 1000, 2)))) +
+    geom_line(size = 0.8, color = "darkgreen") +
+    darktheme +
+    ggtitle("") +
+    xlab("") +
+    ylab("Casos Novos (em milhares)") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 #### {-}
@@ -898,60 +1141,73 @@ renderPlotly({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_world, aes(x=date, y=Deaths/1000)) +
-  geom_line(size=0.8, color="darkred") +
-    geom_point(size=0.8, color="darkred", 
-               aes(text=paste0(format(date, "%d %b %Y"),": ",round(Deaths/1000,2)))) +
+  ggplotly(ggplot(data = covid_world, aes(x = date, y = Deaths / 1000)) +
+    geom_line(size = 0.8, color = "darkred") +
+    geom_point(
+      size = 0.8, color = "darkred",
+      aes(text = paste0(format(date, "%d %b %Y"), ": ", round(Deaths / 1000, 2)))
+    ) +
     darktheme +
-  ggtitle("") + xlab("") + ylab("Óbitos (em milhares)") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+    ggtitle("") +
+    xlab("") +
+    ylab("Óbitos (em milhares)") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 ##### Óbitos por Habitantes
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_world, aes(x=date, y=100000*Deaths/pop_est)) +
-  geom_line(size=1, color="darkred") + 
-    geom_point(size=.8, color="darkred", 
-               aes(text=paste0(format(date, "%d %b %Y"),": ", 
-                               format(round(100000*Deaths/pop_est,2), decimal.mark=",", big.mark=".", 
-                                      small.mark=".")))) + 
+  ggplotly(ggplot(data = covid_world, aes(x = date, y = 100000 * Deaths / pop_est)) +
+    geom_line(size = 1, color = "darkred") +
+    geom_point(
+      size = .8, color = "darkred",
+      aes(text = paste0(
+        format(date, "%d %b %Y"), ": ",
+        format(round(100000 * Deaths / pop_est, 2),
+          decimal.mark = ",", big.mark = ".",
+          small.mark = "."
+        )
+      ))
+    ) +
     darktheme +
-  xlab("") + 
-  ylab("Óbitos (por 100
-mil habitantes)") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+    xlab("") +
+    ylab("Óbitos (por 100
+mil habitantes)") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 ##### Novos Óbitos Diários
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_world, aes(x=date, y=New_Deaths/1000)) + geom_point(color="darkred", aes(text=paste0(format(date, "%d %b %Y"),": ",round(New_Deaths/1000,2)))) +
-  geom_line(size=0.8, color="darkred") + darktheme +
-  ggtitle("") + xlab("") + ylab("Óbitos (em milhares)") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(data = covid_world, aes(x = date, y = New_Deaths / 1000)) +
+    geom_point(color = "darkred", aes(text = paste0(format(date, "%d %b %Y"), ": ", round(New_Deaths / 1000, 2)))) +
+    geom_line(size = 0.8, color = "darkred") +
+    darktheme +
+    ggtitle("") +
+    xlab("") +
+    ylab("Óbitos (em milhares)") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 ##### Novos Óbitos Semanais
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  ggplotly(ggplot(data=covid_world_week, aes(x=semanaEpi, y=New_Deaths/1000)) + 
-           geom_point(color="darkred", aes(text=paste0(semanaEpi,": ",round(New_Deaths/1000,2)))) +
-  geom_line(size=0.8, color="darkred") + darktheme +
-  ggtitle("") + xlab("") + ylab("Óbitos (em milhares)") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(data = covid_world_week, aes(x = semanaEpi, y = New_Deaths / 1000)) +
+    geom_point(color = "darkred", aes(text = paste0(semanaEpi, ": ", round(New_Deaths / 1000, 2)))) +
+    geom_line(size = 0.8, color = "darkred") +
+    darktheme +
+    ggtitle("") +
+    xlab("") +
+    ylab("Óbitos (em milhares)") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 #### {-}

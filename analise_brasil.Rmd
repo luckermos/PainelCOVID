@@ -3,12 +3,14 @@
 ```{r}
 covidbr <- carregar_dado("ms_br") # MS
 
-covidbr <- covidbr %>% 
+covidbr <- covidbr %>%
   mutate(data = ymd(data))
 
-date_br <- na.omit(covidbr$data) %>% max() %>% format("%d/%m/%Y")
+date_br <- na.omit(covidbr$data) %>%
+  max() %>%
+  format("%d/%m/%Y")
 
-covidbr <- covidbr %>% mutate(populacaoTCU2019 = replace_na(populacaoTCU2019,0))
+covidbr <- covidbr %>% mutate(populacaoTCU2019 = replace_na(populacaoTCU2019, 0))
 ```
 
 *Última Atualização: `r date_br`*
@@ -17,53 +19,64 @@ Os dados sobre a COVID-19 no Brasil foram coletados do <a href='https://covid.sa
 
 ```{r}
 # Mapa do Brasil - Estados
-#brasil <- geobr::read_state(showProgress = F)
-#saveRDS(brasil, "dados/brasil.rds")
+# brasil <- geobr::read_state(showProgress = F)
+# saveRDS(brasil, "dados/brasil.rds")
 brasil <- readRDS("dados/brasil.rds")
 
 # Agrupando dados por Estado
-est <- covidbr %>% filter(estado!="") %>% filter(municipio=="") %>% 
-  group_by(regiao, estado, coduf, data) %>% 
-  summarise(semanaEpi = max(semanaEpi),
-            casosAcumulado = max(casosAcumulado),
-            casosNovos = max(casosNovos),
-            obitosAcumulado = max(obitosAcumulado),
-            obitosNovos = max(obitosNovos),
-            pop_2019 = max(populacaoTCU2019))
+est <- covidbr %>%
+  filter(estado != "") %>%
+  filter(municipio == "") %>%
+  group_by(regiao, estado, coduf, data) %>%
+  summarise(
+    semanaEpi = max(semanaEpi),
+    casosAcumulado = max(casosAcumulado),
+    casosNovos = max(casosNovos),
+    obitosAcumulado = max(obitosAcumulado),
+    obitosNovos = max(obitosNovos),
+    pop_2019 = max(populacaoTCU2019)
+  )
 
 ## Agrupando dados por Regiões
-reg <- est %>% group_by(regiao, data) %>% 
-  summarise(semanaEpi = max(semanaEpi),
-            casosAcumulado = sum(casosAcumulado),
-            casosNovos = sum(casosNovos),
-            obitosAcumulado = sum(obitosAcumulado),
-            obitosNovos = sum(obitosNovos),
-            pop_2019 = sum(pop_2019))
+reg <- est %>%
+  group_by(regiao, data) %>%
+  summarise(
+    semanaEpi = max(semanaEpi),
+    casosAcumulado = sum(casosAcumulado),
+    casosNovos = sum(casosNovos),
+    obitosAcumulado = sum(obitosAcumulado),
+    obitosNovos = sum(obitosNovos),
+    pop_2019 = sum(pop_2019)
+  )
 
 # Calculando casos e óbitos por habitantes
 est <- mutate(est,
-              casos_100k = (casosAcumulado/pop_2019)*100000,
-              obitos_100k = (obitosAcumulado/pop_2019)*100000,
-              letalidade = 100*obitosAcumulado/casosAcumulado)
+  casos_100k = (casosAcumulado / pop_2019) * 100000,
+  obitos_100k = (obitosAcumulado / pop_2019) * 100000,
+  letalidade = 100 * obitosAcumulado / casosAcumulado
+)
 
 
 
 # Trazendo informação geométrica
 est <- brasil %>%
-  inner_join(est, c("code_state"="coduf"))
+  inner_join(est, c("code_state" = "coduf"))
 
 est2 <- est # Armazenando todas as datas
 
 est <- filter(est, data == max(est$data)) # Data mais recente
 
 ## Agrupando dados para o Brasil
-covid_brasil <- reg %>% group_by(data) %>% 
-  summarise(semanaEpi = max(semanaEpi),
-            casosAcumulado = sum(casosAcumulado),
-            casosNovos = sum(casosNovos),
-            obitosAcumulado = sum(obitosAcumulado),
-            obitosNovos = sum(obitosNovos),
-            pop_2019 = sum(pop_2019))
+covid_brasil <- reg %>%
+  group_by(data) %>%
+  summarise(
+    semanaEpi = max(semanaEpi),
+    casosAcumulado = sum(casosAcumulado),
+    casosNovos = sum(casosNovos),
+    obitosAcumulado = sum(obitosAcumulado),
+    obitosNovos = sum(obitosNovos),
+    pop_2019 = sum(pop_2019)
+  )
 ```
 
 
@@ -76,24 +89,34 @@ covid_brasil <- reg %>% group_by(data) %>%
 ```{r}
 
 renderLeaflet({
-  greens = colorNumeric("Greens", domain = est$casosAcumulado/1000)
-greensNA <- colorNumeric("Greens", domain = est$casosAcumulado/1000, na.color=rgb(0,0,0,0))
-leaflet(data = est) %>%
-  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-           attribution = paste(
-             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-           )
-  ) %>% addPolygons(weight = 0.1, fillColor = ~greens(casosAcumulado/1000),
-                    color = "green",fillOpacity = 0.9,
-                    smoothFactor = 0.5,
-                    popup = paste0(est$name_state,": ", 
-                                   format(est$casosAcumulado, decimal.mark=",",
-                                          big.mark=".",small.mark="."),"<br>",
-                                   "População: ", round(est$pop_2019/1000000,2)," Mi")) %>% 
-  addLegend(position = "bottomright", pal = greensNA, values = ~casosAcumulado/1000, 
-            title="Casos Confirmados<br>(em milhares)", na.label = "", 
-            opacity = 1) %>% setView(lat=-10, lng=-48, zoom=3)
+  greens <- colorNumeric("Greens", domain = est$casosAcumulado / 1000)
+  greensNA <- colorNumeric("Greens", domain = est$casosAcumulado / 1000, na.color = rgb(0, 0, 0, 0))
+  leaflet(data = est) %>%
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ greens(casosAcumulado / 1000),
+      color = "green", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        est$name_state, ": ",
+        format(est$casosAcumulado,
+          decimal.mark = ",",
+          big.mark = ".", small.mark = "."
+        ), "<br>",
+        "População: ", round(est$pop_2019 / 1000000, 2), " Mi"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = greensNA, values = ~ casosAcumulado / 1000,
+      title = "Casos Confirmados<br>(em milhares)", na.label = "",
+      opacity = 1
+    ) %>%
+    setView(lat = -10, lng = -48, zoom = 3)
 })
 ```
 
@@ -101,105 +124,136 @@ leaflet(data = est) %>%
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  greens = colorNumeric("Greens", domain = est$casos_100k)
-greensNA <- colorNumeric("Greens", domain = est$casos_100k, na.color=rgb(0,0,0,0))
-leaflet(data = est) %>%
-  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-           attribution = paste(
-             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-           )
-  ) %>% addPolygons(weight = 0.1, fillColor = ~greens(casos_100k),
-                    color = "green",fillOpacity = 0.9,
-                    smoothFactor = 0.5,
-                    popup = paste0(est$name_state,": ", 
-                                   format(round(est$casos_100k,2), decimal.mark=",",
-                                          big.mark=".",small.mark="."),"<br>",
-                                   "População: ", round(est$pop_2019/1000000,2)," Mi")) %>% 
-  addLegend(position = "bottomright", pal = greensNA, values = ~casos_100k, 
-            title="Casos Confirmados<br>(por 100 mil <br>habitantes)", na.label = "", 
-            opacity = 1) %>% setView(lat=-10, lng=-48, zoom=3)
+  greens <- colorNumeric("Greens", domain = est$casos_100k)
+  greensNA <- colorNumeric("Greens", domain = est$casos_100k, na.color = rgb(0, 0, 0, 0))
+  leaflet(data = est) %>%
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ greens(casos_100k),
+      color = "green", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        est$name_state, ": ",
+        format(round(est$casos_100k, 2),
+          decimal.mark = ",",
+          big.mark = ".", small.mark = "."
+        ), "<br>",
+        "População: ", round(est$pop_2019 / 1000000, 2), " Mi"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = greensNA, values = ~casos_100k,
+      title = "Casos Confirmados<br>(por 100 mil <br>habitantes)", na.label = "",
+      opacity = 1
+    ) %>%
+    setView(lat = -10, lng = -48, zoom = 3)
 })
-
-
-
-
 ```
 
 ##### Óbitos
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  reds = colorNumeric("Reds", domain = est$obitosAcumulado)
-redsNA <- colorNumeric("Reds", domain = est$obitosAcumulado, na.color=rgb(0,0,0,0))
-leaflet(data = est) %>%
-  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-           attribution = paste(
-             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-           )
-  ) %>% addPolygons(weight = 0.1, fillColor = ~reds(obitosAcumulado),
-                    color = "reds",fillOpacity = 0.9,
-                    smoothFactor = 0.5,
-                    popup = paste0(est$name_state,": ", 
-                                   format(est$obitosAcumulado, decimal.mark=",",
-                                          big.mark=".",small.mark="."),"<br>",
-                                   "População: ", round(est$pop_2019/1000000,2)," Mi")) %>% 
-  addLegend(position = "bottomright", pal = redsNA, values = ~obitosAcumulado, 
-            title="Óbitos", na.label = "", opacity = 1) %>% setView(lat=-10, lng=-48, zoom=3)
+  reds <- colorNumeric("Reds", domain = est$obitosAcumulado)
+  redsNA <- colorNumeric("Reds", domain = est$obitosAcumulado, na.color = rgb(0, 0, 0, 0))
+  leaflet(data = est) %>%
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ reds(obitosAcumulado),
+      color = "reds", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        est$name_state, ": ",
+        format(est$obitosAcumulado,
+          decimal.mark = ",",
+          big.mark = ".", small.mark = "."
+        ), "<br>",
+        "População: ", round(est$pop_2019 / 1000000, 2), " Mi"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = redsNA, values = ~obitosAcumulado,
+      title = "Óbitos", na.label = "", opacity = 1
+    ) %>%
+    setView(lat = -10, lng = -48, zoom = 3)
 })
-
 ```
 
 ##### Óbitos por Habitantes
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  reds = colorNumeric("Reds", domain = est$obitos_100k)
-redsNA <- colorNumeric("Reds", domain = est$obitos_100k, na.color=rgb(0,0,0,0))
-leaflet(data = est) %>%
-  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-           attribution = paste(
-             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-           )
-  ) %>% addPolygons(weight = 0.1, fillColor = ~reds(obitos_100k),
-                    color = "reds",fillOpacity = 0.9,
-                    smoothFactor = 0.5,
-                    popup = paste0(est$name_state,": ", 
-                                   format(round(est$obitos_100k,2), decimal.mark=",",
-                                          big.mark=".",small.mark="."),"<br>",
-                                   "População: ", round(est$pop_2019/1000000,2)," Mi")) %>% 
-  addLegend(position = "bottomright", pal = redsNA, values = ~obitos_100k, 
-            title="Óbitos (por 100 mil<br>habitantes)", na.label = "", opacity = 1) %>% setView(lat=-10, lng=-48, zoom=3)
+  reds <- colorNumeric("Reds", domain = est$obitos_100k)
+  redsNA <- colorNumeric("Reds", domain = est$obitos_100k, na.color = rgb(0, 0, 0, 0))
+  leaflet(data = est) %>%
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ reds(obitos_100k),
+      color = "reds", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        est$name_state, ": ",
+        format(round(est$obitos_100k, 2),
+          decimal.mark = ",",
+          big.mark = ".", small.mark = "."
+        ), "<br>",
+        "População: ", round(est$pop_2019 / 1000000, 2), " Mi"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = redsNA, values = ~obitos_100k,
+      title = "Óbitos (por 100 mil<br>habitantes)", na.label = "", opacity = 1
+    ) %>%
+    setView(lat = -10, lng = -48, zoom = 3)
 })
-
-
-
 ```
 
 ##### Taxa de Letalidade
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  reds = colorNumeric("YlOrRd", domain = est$letalidade)
-redsNA <- colorNumeric("YlOrRd", domain = est$letalidade, na.color=rgb(0,0,0,0))
-leaflet(data = est) %>%
-  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-           attribution = paste(
-             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-           )
-  ) %>% addPolygons(weight = 0.1, fillColor = ~reds(letalidade),
-                    color = "reds",fillOpacity = 0.9,
-                    smoothFactor = 0.5,
-                    popup = paste0(est$name_state,": ", 
-                                   format(round(est$letalidade,2),
-                                          decimal.mark=",", big.mark=".",
-                                          small.mark="."),"%","<br>",
-                                   "População: ", round(est$pop_2019/1000000,2)," Mi")) %>% 
-  addLegend(position = "bottomright", pal = redsNA, values = ~letalidade, 
-            title="Taxa de<br>Letalidade (%)", na.label = "", opacity = 1) %>% setView(lat=-10, lng=-48, zoom=3)
+  reds <- colorNumeric("YlOrRd", domain = est$letalidade)
+  redsNA <- colorNumeric("YlOrRd", domain = est$letalidade, na.color = rgb(0, 0, 0, 0))
+  leaflet(data = est) %>%
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ reds(letalidade),
+      color = "reds", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        est$name_state, ": ",
+        format(round(est$letalidade, 2),
+          decimal.mark = ",", big.mark = ".",
+          small.mark = "."
+        ), "%", "<br>",
+        "População: ", round(est$pop_2019 / 1000000, 2), " Mi"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = redsNA, values = ~letalidade,
+      title = "Taxa de<br>Letalidade (%)", na.label = "", opacity = 1
+    ) %>%
+    setView(lat = -10, lng = -48, zoom = 3)
 })
 ```
 
@@ -210,56 +264,81 @@ leaflet(data = est) %>%
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderDataTable({
-  tabela <- 
-    est %>% st_as_sf() %>% st_drop_geometry() %>% 
-    mutate(casosAcumulado=replace_na(casosAcumulado,0),
-           obitosAcumulado=replace_na(obitosAcumulado,0),
-           casos_100k=replace_na(casos_100k,0),
-           obitos_100k=replace_na(obitos_100k,0)) %>% 
-    mutate(Tax_Let=
-             case_when(
-      round(100*obitosAcumulado/casosAcumulado,2)<10 ~ paste0('0',ifelse(casosAcumulado==0,0,round(100*obitosAcumulado/casosAcumulado,2)),"%"),
-      TRUE ~ paste0(ifelse(casosAcumulado==0,0,round(100*obitosAcumulado/casosAcumulado,2)),"%")
+  tabela <-
+    est %>%
+    st_as_sf() %>%
+    st_drop_geometry() %>%
+    mutate(
+      casosAcumulado = replace_na(casosAcumulado, 0),
+      obitosAcumulado = replace_na(obitosAcumulado, 0),
+      casos_100k = replace_na(casos_100k, 0),
+      obitos_100k = replace_na(obitos_100k, 0)
+    ) %>%
+    mutate(
+      Tax_Let =
+        case_when(
+          round(100 * obitosAcumulado / casosAcumulado, 2) < 10 ~ paste0("0", ifelse(casosAcumulado == 0, 0, round(100 * obitosAcumulado / casosAcumulado, 2)), "%"),
+          TRUE ~ paste0(ifelse(casosAcumulado == 0, 0, round(100 * obitosAcumulado / casosAcumulado, 2)), "%")
+        ),
+      casosAcumulado = format(casosAcumulado,
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
       ),
-           casosAcumulado=format(casosAcumulado, decimal.mark=".", big.mark=",", 
-                            small.mark=","),
-           obitosAcumulado=format(obitosAcumulado, decimal.mark=".", big.mark=",", 
-                         small.mark=","),
-           casos_100k=format(round(casos_100k,2), decimal.mark=".", big.mark=",", 
-                                small.mark=","),
-           obitos_100k=format(round(obitos_100k,2), decimal.mark=".", big.mark=",", 
-                             small.mark=","),
-           pop_2019=format(pop_2019, decimal.mark=".", big.mark=",", 
-                          small.mark=",")) %>% 
-    select(name_state, casosAcumulado, casos_100k, obitosAcumulado, obitos_100k, Tax_Let, 
-           pop_2019) %>% 
+      obitosAcumulado = format(obitosAcumulado,
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      ),
+      casos_100k = format(round(casos_100k, 2),
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      ),
+      obitos_100k = format(round(obitos_100k, 2),
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      ),
+      pop_2019 = format(pop_2019,
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      )
+    ) %>%
+    select(
+      name_state, casosAcumulado, casos_100k, obitosAcumulado, obitos_100k, Tax_Let,
+      pop_2019
+    ) %>%
     datatable(
-      colnames=c("Estado", "Casos Acumulados", "Casos (Por 100 Mil Hab.)","Óbitos Acumulados", "Óbitos (Por 100 Mil Hab.)", "Taxa de Letalidade", "População Estimada"), 
-              options = list(order=list(list(1, 'desc'))), rownames = F, style = 'bootstrap')
-  
+      colnames = c("Estado", "Casos Acumulados", "Casos (Por 100 Mil Hab.)", "Óbitos Acumulados", "Óbitos (Por 100 Mil Hab.)", "Taxa de Letalidade", "População Estimada"),
+      options = list(order = list(list(1, "desc"))), rownames = F, style = "bootstrap"
+    )
 })
 ```
 
 ```{r}
-est_week <- est2 %>% st_drop_geometry() %>% group_by(name_state, semanaEpi) %>% 
-  summarise(casosAcumulado = sum(casosAcumulado),
-            obitosAcumulado = sum(obitosAcumulado),
-            casosNovos = sum(casosNovos),
-            obitosNovos = sum(obitosNovos)
+est_week <- est2 %>%
+  st_drop_geometry() %>%
+  group_by(name_state, semanaEpi) %>%
+  summarise(
+    casosAcumulado = sum(casosAcumulado),
+    obitosAcumulado = sum(obitosAcumulado),
+    casosNovos = sum(casosNovos),
+    obitosNovos = sum(obitosNovos)
   )
 
-reg_week <- reg %>% group_by(regiao, semanaEpi) %>% 
-  summarise(casosAcumulado = sum(casosAcumulado),
-            obitosAcumulado = sum(obitosAcumulado),
-            casosNovos = sum(casosNovos),
-            obitosNovos = sum(obitosNovos)
+reg_week <- reg %>%
+  group_by(regiao, semanaEpi) %>%
+  summarise(
+    casosAcumulado = sum(casosAcumulado),
+    obitosAcumulado = sum(obitosAcumulado),
+    casosNovos = sum(casosNovos),
+    obitosNovos = sum(obitosNovos)
   )
 
-covid_brasil_week <- covid_brasil %>% group_by(semanaEpi) %>% 
-  summarise(casosAcumulado = sum(casosAcumulado),
-            obitosAcumulado = sum(obitosAcumulado),
-            casosNovos = sum(casosNovos),
-            obitosNovos = sum(obitosNovos)
+covid_brasil_week <- covid_brasil %>%
+  group_by(semanaEpi) %>%
+  summarise(
+    casosAcumulado = sum(casosAcumulado),
+    obitosAcumulado = sum(obitosAcumulado),
+    casosNovos = sum(casosNovos),
+    obitosNovos = sum(obitosNovos)
   )
 ```
 
@@ -267,11 +346,14 @@ covid_brasil_week <- covid_brasil %>% group_by(semanaEpi) %>%
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 tags$div(selectizeInput(
-  'estados', label = 'Escolha Estados:',
-  choices = sort(unique(est2$name_state)), 
-  selected = (est2 %>% filter(data==max(data)) %>% arrange(desc(casosAcumulado)))$name_state[1:6], 
-  width='1000px', multiple=T, options = list(maxItems = 6)), 
-  style="display:inline-block")
+  "estados",
+  label = "Escolha Estados:",
+  choices = sort(unique(est2$name_state)),
+  selected = (est2 %>% filter(data == max(data)) %>% arrange(desc(casosAcumulado)))$name_state[1:6],
+  width = "1000px", multiple = T, options = list(maxItems = 6)
+),
+style = "display:inline-block"
+)
 ```
 
 Escolha até 6 UF's e as compare com relação aos:
@@ -280,16 +362,29 @@ Escolha até 6 UF's e as compare com relação aos:
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  d <- est2 %>% filter(data==max(data)) %>% filter(name_state %in% input$estados)
-  
-  ggplotly(ggplot(data = d, aes(x=reorder(name_state, -casosAcumulado), 
-                                y=casosAcumulado/1000, fill=name_state,
-                                text=paste0(name_state,": ",
-                                            format(casosAcumulado, decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-  geom_bar(stat="identity") + coord_flip() + xlab("") + 
-  ylab("Casos Acumulados (em milhares)") + darktheme + theme(legend.position = "none") +
-  ggtitle("Casos Acumulados") + scale_fill_hue(l=40), tooltip = "text") 
+  d <- est2 %>%
+    filter(data == max(data)) %>%
+    filter(name_state %in% input$estados)
+
+  ggplotly(ggplot(data = d, aes(
+    x = reorder(name_state, -casosAcumulado),
+    y = casosAcumulado / 1000, fill = name_state,
+    text = paste0(
+      name_state, ": ",
+      format(casosAcumulado,
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    )
+  )) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    xlab("") +
+    ylab("Casos Acumulados (em milhares)") +
+    darktheme +
+    theme(legend.position = "none") +
+    ggtitle("Casos Acumulados") +
+    scale_fill_hue(l = 40), tooltip = "text")
 })
 ```
 
@@ -297,16 +392,20 @@ renderPlotly({
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- est2 %>% filter(name_state %in% input$estados)
-  
-  ggplotly(ggplot(data = d, aes(x=data, y=casosAcumulado/1000, color=name_state)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(casosAcumulado/1000,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    xlab("") + 
-  ylab("Casos Confirmados (em milhares)") + 
-  ggtitle("Evolução: Casos Acumulados") + darktheme + labs(color="") + theme(legend.position="bottom") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
-  
+
+  ggplotly(ggplot(data = d, aes(x = data, y = casosAcumulado / 1000, color = name_state)) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(casosAcumulado / 1000, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    xlab("") +
+    ylab("Casos Confirmados (em milhares)") +
+    ggtitle("Evolução: Casos Acumulados") +
+    darktheme +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -314,31 +413,39 @@ renderPlotly({
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- est2 %>% filter(name_state %in% input$estados)
-  ggplotly(ggplot(data = d, aes(x=data, y=casosNovos, color=name_state)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(casosNovos,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    xlab("") + 
-  ylab("Novos Casos") + 
-  ggtitle("Novos Casos Diários") + darktheme + labs(color="") + theme(legend.position="bottom")  +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(data = d, aes(x = data, y = casosNovos, color = name_state)) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(casosNovos, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    xlab("") +
+    ylab("Novos Casos") +
+    ggtitle("Novos Casos Diários") +
+    darktheme +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- est_week %>% filter(name_state %in% input$estados)
-  ggplotly(ggplot(data = d, aes(x=semanaEpi, y=casosNovos, color=name_state)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(semanaEpi,": ",format(round(casosNovos,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    xlab("Semana Epidemiológica") + 
-  ylab("Novos Casos") + 
-  ggtitle("Novos Casos por Semana Epidemiológica") + darktheme + labs(color="") + theme(legend.position="bottom")  +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(data = d, aes(x = semanaEpi, y = casosNovos, color = name_state)) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(semanaEpi, ": ", format(round(casosNovos, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    xlab("Semana Epidemiológica") +
+    ylab("Novos Casos") +
+    ggtitle("Novos Casos por Semana Epidemiológica") +
+    darktheme +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
-
 ```
 
 
@@ -346,31 +453,49 @@ renderPlotly({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  d <- est2 %>% filter(data==max(data)) %>% filter(name_state %in% input$estados)
-  ggplotly(ggplot(data = d, aes(x=reorder(name_state, -casosAcumulado/pop_2019), 
-                                y=1000000*casosAcumulado/pop_2019, fill=name_state, 
-                                text=paste0(name_state,": ",
-                                            format(1000000*casosAcumulado/pop_2019, decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-  geom_bar(stat="identity") + coord_flip() + xlab("") + 
-  ylab("Casos por Milhão de Habitantes") + darktheme + theme(legend.position = "none") +
-  ggtitle("Casos Acumulados por Milhão de Habitantes") + scale_fill_hue(l=40), tooltip = "text")
+  d <- est2 %>%
+    filter(data == max(data)) %>%
+    filter(name_state %in% input$estados)
+  ggplotly(ggplot(data = d, aes(
+    x = reorder(name_state, -casosAcumulado / pop_2019),
+    y = 1000000 * casosAcumulado / pop_2019, fill = name_state,
+    text = paste0(
+      name_state, ": ",
+      format(1000000 * casosAcumulado / pop_2019,
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    )
+  )) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    xlab("") +
+    ylab("Casos por Milhão de Habitantes") +
+    darktheme +
+    theme(legend.position = "none") +
+    ggtitle("Casos Acumulados por Milhão de Habitantes") +
+    scale_fill_hue(l = 40), tooltip = "text")
 })
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- est2 %>% filter(name_state %in% input$estados)
-  ggplotly(ggplot(data = d, aes(x=data, y=1000000*casosAcumulado/pop_2019,
-                                color=name_state)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(1000000*casosAcumulado/pop_2019,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme + xlab("") + 
-  ylab("Casos (por milhão de habitantes)") + 
-  ggtitle("Evolução: Casos Acumulados por Milhão de Habitantes") +
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(data = d, aes(
+    x = data, y = 1000000 * casosAcumulado / pop_2019,
+    color = name_state
+  )) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(1000000 * casosAcumulado / pop_2019, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("") +
+    ylab("Casos (por milhão de habitantes)") +
+    ggtitle("Evolução: Casos Acumulados por Milhão de Habitantes") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -378,60 +503,91 @@ renderPlotly({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  d <- est2 %>% filter(data==max(data)) %>% filter(name_state %in% input$estados)
-  ggplotly(ggplot(data = d, aes(x=reorder(name_state, -obitosAcumulado), 
-                                y=obitosAcumulado/1000, fill=name_state, 
-                                text=paste0(name_state,": ",
-                                            format(obitosAcumulado, decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-  geom_bar(stat="identity") + coord_flip() + xlab("") + 
-  ylab("Óbitos (em milhares)") + darktheme + theme(legend.position = "none") +
-  ggtitle("Óbitos Acumulados") + scale_fill_hue(l=40), tooltip = "text")
+  d <- est2 %>%
+    filter(data == max(data)) %>%
+    filter(name_state %in% input$estados)
+  ggplotly(ggplot(data = d, aes(
+    x = reorder(name_state, -obitosAcumulado),
+    y = obitosAcumulado / 1000, fill = name_state,
+    text = paste0(
+      name_state, ": ",
+      format(obitosAcumulado,
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    )
+  )) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    xlab("") +
+    ylab("Óbitos (em milhares)") +
+    darktheme +
+    theme(legend.position = "none") +
+    ggtitle("Óbitos Acumulados") +
+    scale_fill_hue(l = 40), tooltip = "text")
 })
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- est2 %>% filter(name_state %in% input$estados)
-  ggplotly(ggplot(data = d, aes(x=data, y=obitosAcumulado/1000, color=name_state)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(obitosAcumulado/1000,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme + xlab("") + 
-  ylab("Óbitos (em milhares)") + 
-  ggtitle("Evolução: Óbitos Acumulados") + labs(color="") + 
-    theme(legend.position="bottom") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(data = d, aes(x = data, y = obitosAcumulado / 1000, color = name_state)) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(obitosAcumulado / 1000, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("") +
+    ylab("Óbitos (em milhares)") +
+    ggtitle("Evolução: Óbitos Acumulados") +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- est2 %>% filter(name_state %in% input$estados)
-  ggplotly(ggplot(data = d, 
-       aes(x=data, y=obitosNovos, color=name_state)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(obitosNovos,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme + xlab("") + 
-  ylab("Novos Óbitos") + 
-  ggtitle("Novos Óbitos") + labs(color="") + theme(legend.position="bottom") +
-  scale_color_hue(l=40), tooltip = "text")  %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(
+    data = d,
+    aes(x = data, y = obitosNovos, color = name_state)
+  ) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(obitosNovos, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("") +
+    ylab("Novos Óbitos") +
+    ggtitle("Novos Óbitos") +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- est_week %>% filter(name_state %in% input$estados)
-  ggplotly(ggplot(data = d, 
-       aes(x=semanaEpi, y=obitosNovos, color=name_state)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(semanaEpi,": ",format(round(obitosNovos,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme + xlab("Semana Epidemiológica") + 
-  ylab("Novos Óbitos") + 
-  ggtitle("Novos Óbitos por Semana Epidemiológica") + labs(color="") + theme(legend.position="bottom") +
-  scale_color_hue(l=40), tooltip = "text")  %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(
+    data = d,
+    aes(x = semanaEpi, y = obitosNovos, color = name_state)
+  ) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(semanaEpi, ": ", format(round(obitosNovos, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("Semana Epidemiológica") +
+    ylab("Novos Óbitos") +
+    ggtitle("Novos Óbitos por Semana Epidemiológica") +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -439,31 +595,49 @@ renderPlotly({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  d <- est2 %>% filter(data==max(data)) %>% filter(name_state %in% input$estados)
-  ggplotly(ggplot(data = d, aes(x=reorder(name_state, -obitosAcumulado/pop_2019), 
-                                y=1000000*obitosAcumulado/pop_2019, fill=name_state, 
-                                text=paste0(name_state,": ",
-                                            format(round(1000000*obitosAcumulado/pop_2019,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-  geom_bar(stat="identity") + coord_flip() + xlab("") + 
-  ylab("Óbitos por Milhão de Habitantes") + darktheme + theme(legend.position = "none") +
-  ggtitle("Óbitos Acumulados por Milhão de Habitantes") + scale_fill_hue(l=40), tooltip = "text")
+  d <- est2 %>%
+    filter(data == max(data)) %>%
+    filter(name_state %in% input$estados)
+  ggplotly(ggplot(data = d, aes(
+    x = reorder(name_state, -obitosAcumulado / pop_2019),
+    y = 1000000 * obitosAcumulado / pop_2019, fill = name_state,
+    text = paste0(
+      name_state, ": ",
+      format(round(1000000 * obitosAcumulado / pop_2019, 2),
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    )
+  )) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    xlab("") +
+    ylab("Óbitos por Milhão de Habitantes") +
+    darktheme +
+    theme(legend.position = "none") +
+    ggtitle("Óbitos Acumulados por Milhão de Habitantes") +
+    scale_fill_hue(l = 40), tooltip = "text")
 })
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- est2 %>% filter(name_state %in% input$estados)
-  ggplotly(ggplot(data = d, 
-                aes(x=data, y=1000000*obitosAcumulado/pop_2019, color=name_state)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(1000000*obitosAcumulado/pop_2019,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme + xlab("") + 
-  ylab("Óbitos (por milhão de habitantes)") + 
-  ggtitle("Evolução: Óbitos Acumulados (por milhão de habitantes)") +
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+  ggplotly(ggplot(
+    data = d,
+    aes(x = data, y = 1000000 * obitosAcumulado / pop_2019, color = name_state)
+  ) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(1000000 * obitosAcumulado / pop_2019, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("") +
+    ylab("Óbitos (por milhão de habitantes)") +
+    ggtitle("Evolução: Óbitos Acumulados (por milhão de habitantes)") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -478,62 +652,81 @@ renderPlotly({
 ##### Casos Acumulados
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=reg
-       , aes(x=data, y=casosAcumulado/1000, color=regiao)) +
-  geom_line(size=1) +
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(casosAcumulado/1000,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme +
-  ggtitle("") + xlab("") + 
-  ylab("Casos Confirmados (em milhares)") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+ggplotly(ggplot(
+  data = reg,
+  aes(x = data, y = casosAcumulado / 1000, color = regiao)
+) +
+  geom_line(size = 1) +
+  geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(casosAcumulado / 1000, 2),
+    decimal.mark = ",", big.mark = ".",
+    small.mark = "."
+  )))) +
+  darktheme +
+  ggtitle("") +
+  xlab("") +
+  ylab("Casos Confirmados (em milhares)") +
+  labs(color = "") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 ##### Casos por Habitantes
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=reg
-       , aes(x=data, y=1000000*casosAcumulado/pop_2019, color=regiao)) +
-  geom_line(size=1) + 
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(1000000*casosAcumulado/pop_2019,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme +
-  xlab("") + 
+ggplotly(ggplot(
+  data = reg,
+  aes(x = data, y = 1000000 * casosAcumulado / pop_2019, color = regiao)
+) +
+  geom_line(size = 1) +
+  geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(1000000 * casosAcumulado / pop_2019, 2),
+    decimal.mark = ",", big.mark = ".",
+    small.mark = "."
+  )))) +
+  darktheme +
+  xlab("") +
   ylab("Casos Confirmados (por 
-milhão de habitantes)") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+milhão de habitantes)") +
+  labs(color = "") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 ##### Novos Casos Diários
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=reg
-       , aes(x=data, y=casosNovos, color=regiao)) +
-  geom_line(size=.8) + 
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(casosNovos,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme +
-  ggtitle("") + xlab("") + 
-  ylab("Novos Casos") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+ggplotly(ggplot(
+  data = reg,
+  aes(x = data, y = casosNovos, color = regiao)
+) +
+  geom_line(size = .8) +
+  geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(casosNovos, 2),
+    decimal.mark = ",", big.mark = ".",
+    small.mark = "."
+  )))) +
+  darktheme +
+  ggtitle("") +
+  xlab("") +
+  ylab("Novos Casos") +
+  labs(color = "") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 ##### Novos Casos Semanais
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=reg_week
-       , aes(x=semanaEpi, y=casosNovos, color=regiao)) +
-  geom_line(size=.8) + 
-    geom_point(size=.8, aes(text=paste0(semanaEpi,": ",format(round(casosNovos,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme +
-  ggtitle("") + xlab("Semana Epidemiológica") + 
-  ylab("Novos Casos") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+ggplotly(ggplot(
+  data = reg_week,
+  aes(x = semanaEpi, y = casosNovos, color = regiao)
+) +
+  geom_line(size = .8) +
+  geom_point(size = .8, aes(text = paste0(semanaEpi, ": ", format(round(casosNovos, 2),
+    decimal.mark = ",", big.mark = ".",
+    small.mark = "."
+  )))) +
+  darktheme +
+  ggtitle("") +
+  xlab("Semana Epidemiológica") +
+  ylab("Novos Casos") +
+  labs(color = "") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 #### {-}
@@ -543,63 +736,82 @@ ggplotly(ggplot(data=reg_week
 ##### Óbitos Acumulados
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=reg
-       , aes(x=data, y=obitosAcumulado/1000, color=regiao)) +
-  geom_line(size=1) + 
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(obitosAcumulado/1000,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme +
-  ggtitle("") + xlab("") + 
-  ylab("Óbitos (em milhares)") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+ggplotly(ggplot(
+  data = reg,
+  aes(x = data, y = obitosAcumulado / 1000, color = regiao)
+) +
+  geom_line(size = 1) +
+  geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(obitosAcumulado / 1000, 2),
+    decimal.mark = ",", big.mark = ".",
+    small.mark = "."
+  )))) +
+  darktheme +
+  ggtitle("") +
+  xlab("") +
+  ylab("Óbitos (em milhares)") +
+  labs(color = "") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 
 ##### Óbitos por Habitantes
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=reg 
-       , aes(x=data, y=1000000*obitosAcumulado/pop_2019, color=regiao)) +
-  geom_line(size=1) + 
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(1000000*obitosAcumulado/pop_2019,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme +
-  xlab("") + 
+ggplotly(ggplot(
+  data = reg,
+  aes(x = data, y = 1000000 * obitosAcumulado / pop_2019, color = regiao)
+) +
+  geom_line(size = 1) +
+  geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(1000000 * obitosAcumulado / pop_2019, 2),
+    decimal.mark = ",", big.mark = ".",
+    small.mark = "."
+  )))) +
+  darktheme +
+  xlab("") +
   ylab("Óbitos(por milhão
-de habitantes)") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+de habitantes)") +
+  labs(color = "") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 ##### Novos Óbitos Diários
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=reg
-       , aes(x=data, y=obitosNovos, color=regiao)) +
-  geom_line(size=.8) + 
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(obitosNovos,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme +
-  ggtitle("") + xlab("") + 
-  ylab("Novos Óbitos") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+ggplotly(ggplot(
+  data = reg,
+  aes(x = data, y = obitosNovos, color = regiao)
+) +
+  geom_line(size = .8) +
+  geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(obitosNovos, 2),
+    decimal.mark = ",", big.mark = ".",
+    small.mark = "."
+  )))) +
+  darktheme +
+  ggtitle("") +
+  xlab("") +
+  ylab("Novos Óbitos") +
+  labs(color = "") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 ##### Novos Óbitos Semanais
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=reg_week
-       , aes(x=semanaEpi, y=obitosNovos, color=regiao)) +
-  geom_line(size=.8) + 
-    geom_point(size=.8, aes(text=paste0(semanaEpi,": ",format(round(obitosNovos,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme +
-  ggtitle("") + xlab("Semana Epidemiológica") + 
-  ylab("Novos Óbitos") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+ggplotly(ggplot(
+  data = reg_week,
+  aes(x = semanaEpi, y = obitosNovos, color = regiao)
+) +
+  geom_line(size = .8) +
+  geom_point(size = .8, aes(text = paste0(semanaEpi, ": ", format(round(obitosNovos, 2),
+    decimal.mark = ",", big.mark = ".",
+    small.mark = "."
+  )))) +
+  darktheme +
+  ggtitle("") +
+  xlab("Semana Epidemiológica") +
+  ylab("Novos Óbitos") +
+  labs(color = "") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 #### {-}
@@ -615,46 +827,60 @@ ggplotly(ggplot(data=reg_week
 ##### Casos Acumulados
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=covid_brasil, aes(x=data, y=casosAcumulado/1000)) +
-           geom_line(size=0.8, color="darkgreen") + 
-    geom_point(size=0.8, color="darkgreen", 
-               aes(text=paste0(format(data, "%d %b %Y"),": ",round(casosAcumulado/1000,2)))) + 
-    darktheme +
-  ggtitle("") + xlab("") + ylab("Casos Acumulados (em milhares)") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+ggplotly(ggplot(data = covid_brasil, aes(x = data, y = casosAcumulado / 1000)) +
+  geom_line(size = 0.8, color = "darkgreen") +
+  geom_point(
+    size = 0.8, color = "darkgreen",
+    aes(text = paste0(format(data, "%d %b %Y"), ": ", round(casosAcumulado / 1000, 2)))
+  ) +
+  darktheme +
+  ggtitle("") +
+  xlab("") +
+  ylab("Casos Acumulados (em milhares)") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 ##### Casos por Habitantes
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=covid_brasil, aes(x=data, y=100000*casosAcumulado/pop_2019)) +
-  geom_line(size=1, color="darkgreen") + 
-    geom_point(size=.8, color="darkgreen", aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(100000*casosAcumulado/pop_2019,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    darktheme +
-  xlab("") + 
+ggplotly(ggplot(data = covid_brasil, aes(x = data, y = 100000 * casosAcumulado / pop_2019)) +
+  geom_line(size = 1, color = "darkgreen") +
+  geom_point(size = .8, color = "darkgreen", aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(100000 * casosAcumulado / pop_2019, 2),
+    decimal.mark = ",", big.mark = ".",
+    small.mark = "."
+  )))) +
+  darktheme +
+  xlab("") +
   ylab("Casos Confirmados (por 
-100 mil habitantes)") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+100 mil habitantes)") +
+  labs(color = "") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 ##### Novos Casos Diários
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=covid_brasil, aes(x=data, y=casosNovos/1000)) + geom_point(color="darkgreen", aes(text=paste0(format(data, "%d %b %Y"),": ",round(casosNovos/1000,2)))) +
-  geom_line(size=0.8, color="darkgreen") + darktheme +
-  ggtitle("") + xlab("") + ylab("Casos Novos (em milhares)") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+ggplotly(ggplot(data = covid_brasil, aes(x = data, y = casosNovos / 1000)) +
+  geom_point(color = "darkgreen", aes(text = paste0(format(data, "%d %b %Y"), ": ", round(casosNovos / 1000, 2)))) +
+  geom_line(size = 0.8, color = "darkgreen") +
+  darktheme +
+  ggtitle("") +
+  xlab("") +
+  ylab("Casos Novos (em milhares)") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 ##### Novos Casos Semanais
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=covid_brasil_week, aes(x=semanaEpi, y=casosNovos/1000)) + geom_point(color="darkgreen", aes(text=paste0(semanaEpi,": ",round(casosNovos/1000,2)))) +
-  geom_line(size=0.8, color="darkgreen") + darktheme +
-  ggtitle("") + xlab("Semana Epidemiológica") + ylab("Casos Novos (em milhares)") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+ggplotly(ggplot(data = covid_brasil_week, aes(x = semanaEpi, y = casosNovos / 1000)) +
+  geom_point(color = "darkgreen", aes(text = paste0(semanaEpi, ": ", round(casosNovos / 1000, 2)))) +
+  geom_line(size = 0.8, color = "darkgreen") +
+  darktheme +
+  ggtitle("") +
+  xlab("Semana Epidemiológica") +
+  ylab("Casos Novos (em milhares)") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 #### {-}
@@ -664,48 +890,66 @@ ggplotly(ggplot(data=covid_brasil_week, aes(x=semanaEpi, y=casosNovos/1000)) + g
 ##### Óbitos
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=covid_brasil, aes(x=data, y=obitosAcumulado/1000)) +
-  geom_line(size=0.8, color="darkred") +
-    geom_point(size=0.8, color="darkred", 
-               aes(text=paste0(format(data, "%d %b %Y"),": ",round(obitosAcumulado/1000,2)))) +
-    darktheme +
-  ggtitle("") + xlab("") + ylab("Óbitos (em milhares)") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+ggplotly(ggplot(data = covid_brasil, aes(x = data, y = obitosAcumulado / 1000)) +
+  geom_line(size = 0.8, color = "darkred") +
+  geom_point(
+    size = 0.8, color = "darkred",
+    aes(text = paste0(format(data, "%d %b %Y"), ": ", round(obitosAcumulado / 1000, 2)))
+  ) +
+  darktheme +
+  ggtitle("") +
+  xlab("") +
+  ylab("Óbitos (em milhares)") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 ##### Óbitos por Habitantes
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=covid_brasil, aes(x=data, y=100000*obitosAcumulado/pop_2019)) +
-  geom_line(size=1, color="darkred") + 
-    geom_point(size=.8, color="darkred", 
-               aes(text=paste0(format(data, "%d %b %Y"),": ", 
-                               format(round(100000*obitosAcumulado/pop_2019,2), decimal.mark=",", big.mark=".", 
-                                      small.mark=".")))) + 
-    darktheme +
-  xlab("") + 
+ggplotly(ggplot(data = covid_brasil, aes(x = data, y = 100000 * obitosAcumulado / pop_2019)) +
+  geom_line(size = 1, color = "darkred") +
+  geom_point(
+    size = .8, color = "darkred",
+    aes(text = paste0(
+      format(data, "%d %b %Y"), ": ",
+      format(round(100000 * obitosAcumulado / pop_2019, 2),
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    ))
+  ) +
+  darktheme +
+  xlab("") +
   ylab("Óbitos (por 100
-mil habitantes)") + 
-  labs(color="") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+mil habitantes)") +
+  labs(color = "") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 ##### Novos Óbitos Diários
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=covid_brasil, aes(x=data, y=obitosNovos/1000)) + geom_point(color="darkred", aes(text=paste0(format(data, "%d %b %Y"),": ",round(obitosNovos/1000,2)))) +
-  geom_line(size=0.8, color="darkred") + darktheme +
-  ggtitle("") + xlab("") + ylab("Óbitos (em milhares)") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+ggplotly(ggplot(data = covid_brasil, aes(x = data, y = obitosNovos / 1000)) +
+  geom_point(color = "darkred", aes(text = paste0(format(data, "%d %b %Y"), ": ", round(obitosNovos / 1000, 2)))) +
+  geom_line(size = 0.8, color = "darkred") +
+  darktheme +
+  ggtitle("") +
+  xlab("") +
+  ylab("Óbitos (em milhares)") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 ##### Novos Óbitos Semanais
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-ggplotly(ggplot(data=covid_brasil_week, aes(x=semanaEpi, y=obitosNovos/1000)) + geom_point(color="darkred", aes(text=paste0(semanaEpi,": ",round(obitosNovos/1000,2)))) +
-  geom_line(size=0.8, color="darkred") + darktheme +
-  ggtitle("") + xlab("Semana Epidemiológica") + ylab("Óbitos (em milhares)") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
+ggplotly(ggplot(data = covid_brasil_week, aes(x = semanaEpi, y = obitosNovos / 1000)) +
+  geom_point(color = "darkred", aes(text = paste0(semanaEpi, ": ", round(obitosNovos / 1000, 2)))) +
+  geom_line(size = 0.8, color = "darkred") +
+  darktheme +
+  ggtitle("") +
+  xlab("Semana Epidemiológica") +
+  ylab("Óbitos (em milhares)") +
+  scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 ```
 
 #### {-}

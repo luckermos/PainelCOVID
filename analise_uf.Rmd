@@ -1,15 +1,15 @@
 ## <img src="imagens/mg2.png" style="float: left; margin-right: 10px;" />Covid-19 por Estado
 
 ```{r}
-#mun <- covidbr %>% drop_na(municipio) # Dados por Município
-mun <- covidbr %>% filter(municipio!="") # Dados por Município Novo
+# mun <- covidbr %>% drop_na(municipio) # Dados por Município
+mun <- covidbr %>% filter(municipio != "") # Dados por Município Novo
 # Retirando o DF
-mun <- mun %>% filter(estado!="DF")
+mun <- mun %>% filter(estado != "DF")
 
 # Shapefile dos municípios do Brasil
-#munis <- geobr::read_municipality()
-#saveRDS(munis, file="dados/municipios.rds")
-munis <- readRDS('dados/municipios.rds')
+# munis <- geobr::read_municipality()
+# saveRDS(munis, file="dados/municipios.rds")
+munis <- readRDS("dados/municipios.rds")
 ```
 
 *Última Atualização: `r date_br`*
@@ -20,42 +20,54 @@ Os dados sobre a COVID-19 no Brasil foram coletados do <a href='https://covid.sa
 
 ```{r}
 tags$div(selectInput(
-  'estado', label = "Escolha um Estado:", #ajuda
-  choices = sort(unique(mun$estado)), 
-  selected = "MG", 
-  width='200px'), 
-  style="display:inline-block .selectize-dropdown { line-height: 10px; }")
+  "estado",
+  label = "Escolha um Estado:", # ajuda
+  choices = sort(unique(mun$estado)),
+  selected = "MG",
+  width = "200px"
+),
+style = "display:inline-block .selectize-dropdown { line-height: 10px; }"
+)
 ```
 
 
 ```{r}
 ## Base para Mapas (Data mais Recente)
-mun_munis <- left_join(x=munis %>% mutate(code_muni=str_sub(code_muni,1,6),
-                                          code_muni=as.numeric(code_muni)), 
-                       y=mun %>% rename(pop_2019=populacaoTCU2019) %>% 
-                         filter(data==max(data)), 
-                       by=c("code_muni"="codmun")) %>% 
-  mutate(pop_2019=replace_na(pop_2019,0),
-         casosAcumulado=replace_na(casosAcumulado,0),
-         casosNovos=replace_na(casosNovos,0),
-         obitosAcumulado=replace_na(obitosAcumulado,0),
-         obitosNovos=replace_na(obitosNovos,0),
-         Recuperadosnovos=replace_na(Recuperadosnovos,0),
-         emAcompanhamentoNovos=replace_na(emAcompanhamentoNovos,0),
-         casos_100k=(casosAcumulado/pop_2019)*100000,
-         obitos_100k = (obitosAcumulado/pop_2019)*100000,
-         letalidade = 100*obitosAcumulado/casosAcumulado)
+mun_munis <- left_join(
+  x = munis %>% mutate(
+    code_muni = str_sub(code_muni, 1, 6),
+    code_muni = as.numeric(code_muni)
+  ),
+  y = mun %>% rename(pop_2019 = populacaoTCU2019) %>%
+    filter(data == max(data)),
+  by = c("code_muni" = "codmun")
+) %>%
+  mutate(
+    pop_2019 = replace_na(pop_2019, 0),
+    casosAcumulado = replace_na(casosAcumulado, 0),
+    casosNovos = replace_na(casosNovos, 0),
+    obitosAcumulado = replace_na(obitosAcumulado, 0),
+    obitosNovos = replace_na(obitosNovos, 0),
+    Recuperadosnovos = replace_na(Recuperadosnovos, 0),
+    emAcompanhamentoNovos = replace_na(emAcompanhamentoNovos, 0),
+    casos_100k = (casosAcumulado / pop_2019) * 100000,
+    obitos_100k = (obitosAcumulado / pop_2019) * 100000,
+    letalidade = 100 * obitosAcumulado / casosAcumulado
+  )
 
 ## A Base 'mun', com todas as datas, será utilizada nos demais gráficos que são por dia
 
 ## Base para gráfico por Semana:
-mun_semana <- mun %>% group_by(estado, municipio, semanaEpi) %>% 
-  summarise(semanaEpi = max(semanaEpi),
-            casosAcumulado = sum(casosAcumulado),
-            casosNovos = sum(casosNovos),
-            obitosAcumulado = sum(obitosAcumulado),
-            obitosNovos = sum(obitosNovos),
-            pop_2019 = sum(populacaoTCU2019))
+mun_semana <- mun %>%
+  group_by(estado, municipio, semanaEpi) %>%
+  summarise(
+    semanaEpi = max(semanaEpi),
+    casosAcumulado = sum(casosAcumulado),
+    casosNovos = sum(casosNovos),
+    obitosAcumulado = sum(obitosAcumulado),
+    obitosNovos = sum(obitosNovos),
+    pop_2019 = sum(populacaoTCU2019)
+  )
 ```
 
 #### **Mapas** {.tabset .tabset-pills}
@@ -64,25 +76,35 @@ mun_semana <- mun %>% group_by(estado, municipio, semanaEpi) %>%
 
 ```{r}
 renderLeaflet({
-  dat <- mun_munis %>% filter(estado==input$estado)
-    greens = colorNumeric("Greens", domain = dat$casosAcumulado/1000)
-  greensNA <- colorNumeric("Greens", domain = dat$casosAcumulado/1000, na.color=rgb(0,0,0,0))
-    leaflet(data = dat, options = leafletOptions(zoomControl = FALSE)) %>%
-      addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-             attribution = paste(
-               '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-               '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-             )
-    ) %>% addPolygons(weight = 0.1, fillColor = ~greens(casosAcumulado/1000),
-                      color = "green",fillOpacity = 0.9,
-                      smoothFactor = 0.5,
-                      popup = paste0(dat$municipio,": ", 
-                                     format(dat$casosAcumulado, decimal.mark=",",
-                                            big.mark=".",small.mark="."),"<br>",
-                                     "População: ", round(dat$pop_2019/1000,3)," Mil"))    %>% 
-    addLegend(position = "bottomright", pal = greensNA, values = ~casosAcumulado/1000, 
-              title="Casos Confirmados<br>(em milhares)", na.label = "", 
-              opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
+  dat <- mun_munis %>% filter(estado == input$estado)
+  greens <- colorNumeric("Greens", domain = dat$casosAcumulado / 1000)
+  greensNA <- colorNumeric("Greens", domain = dat$casosAcumulado / 1000, na.color = rgb(0, 0, 0, 0))
+  leaflet(data = dat, options = leafletOptions(zoomControl = FALSE)) %>%
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ greens(casosAcumulado / 1000),
+      color = "green", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        dat$municipio, ": ",
+        format(dat$casosAcumulado,
+          decimal.mark = ",",
+          big.mark = ".", small.mark = "."
+        ), "<br>",
+        "População: ", round(dat$pop_2019 / 1000, 3), " Mil"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = greensNA, values = ~ casosAcumulado / 1000,
+      title = "Casos Confirmados<br>(em milhares)", na.label = "",
+      opacity = 1
+    ) %>%
+    setView(lat = st_coordinates(dat)[, 2] %>% mean(), lng = st_coordinates(dat)[, 1] %>% mean(), zoom = 5)
 })
 ```
 
@@ -90,25 +112,35 @@ renderLeaflet({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  dat <- mun_munis %>% filter(estado==input$estado)
-    greens = colorNumeric("Greens", domain = dat$casos_100k)
-  greensNA <- colorNumeric("Greens", domain = dat$casos_100k, na.color=rgb(0,0,0,0))
+  dat <- mun_munis %>% filter(estado == input$estado)
+  greens <- colorNumeric("Greens", domain = dat$casos_100k)
+  greensNA <- colorNumeric("Greens", domain = dat$casos_100k, na.color = rgb(0, 0, 0, 0))
   leaflet(data = dat, options = leafletOptions(zoomControl = FALSE)) %>%
-    addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-             attribution = paste(
-               '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-               '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-             )
-    ) %>% addPolygons(weight = 0.1, fillColor = ~greens(casos_100k),
-                      color = "green",fillOpacity = 0.9,
-                      smoothFactor = 0.5,
-                      popup = paste0(dat$name_muni,": ", 
-                                     format(round(dat$casos_100k,2), decimal.mark=",",
-                                            big.mark=".",small.mark="."),"<br>",
-                                     "População: ", round(est$pop_2019/1000,3)," Mil")) %>% 
-    addLegend(position = "bottomright", pal = greensNA, values = ~casos_100k, 
-              title="Casos Confirmados<br>(por 100 mil<br>habitantes)", na.label = "", 
-              opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ greens(casos_100k),
+      color = "green", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        dat$name_muni, ": ",
+        format(round(dat$casos_100k, 2),
+          decimal.mark = ",",
+          big.mark = ".", small.mark = "."
+        ), "<br>",
+        "População: ", round(est$pop_2019 / 1000, 3), " Mil"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = greensNA, values = ~casos_100k,
+      title = "Casos Confirmados<br>(por 100 mil<br>habitantes)", na.label = "",
+      opacity = 1
+    ) %>%
+    setView(lat = st_coordinates(dat)[, 2] %>% mean(), lng = st_coordinates(dat)[, 1] %>% mean(), zoom = 5)
 })
 ```
 
@@ -116,24 +148,34 @@ renderLeaflet({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  dat <- mun_munis %>% filter(estado==input$estado)
-    reds = colorNumeric("Reds", domain = dat$obitosAcumulado)
-  redsNA <- colorNumeric("Reds", domain = dat$obitosAcumulado, na.color=rgb(0,0,0,0))
+  dat <- mun_munis %>% filter(estado == input$estado)
+  reds <- colorNumeric("Reds", domain = dat$obitosAcumulado)
+  redsNA <- colorNumeric("Reds", domain = dat$obitosAcumulado, na.color = rgb(0, 0, 0, 0))
   leaflet(data = dat, options = leafletOptions(zoomControl = FALSE)) %>%
-    addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-             attribution = paste(
-               '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-               '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-             )
-    ) %>% addPolygons(weight = 0.1, fillColor = ~reds(obitosAcumulado),
-                      color = "reds",fillOpacity = 0.9,
-                      smoothFactor = 0.5,
-                      popup = paste0(dat$name_muni,": ", 
-                                     format(dat$obitosAcumulado, decimal.mark=",",
-                                            big.mark=".",small.mark="."),"<br>",
-                                     "População: ", round(dat$pop_2019/1000,3)," Mil")) %>% 
-    addLegend(position = "bottomright", pal = redsNA, values = ~obitosAcumulado, 
-              title="Óbitos", na.label = "", opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ reds(obitosAcumulado),
+      color = "reds", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        dat$name_muni, ": ",
+        format(dat$obitosAcumulado,
+          decimal.mark = ",",
+          big.mark = ".", small.mark = "."
+        ), "<br>",
+        "População: ", round(dat$pop_2019 / 1000, 3), " Mil"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = redsNA, values = ~obitosAcumulado,
+      title = "Óbitos", na.label = "", opacity = 1
+    ) %>%
+    setView(lat = st_coordinates(dat)[, 2] %>% mean(), lng = st_coordinates(dat)[, 1] %>% mean(), zoom = 5)
 })
 ```
 
@@ -141,24 +183,34 @@ renderLeaflet({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  dat <- mun_munis %>% filter(estado==input$estado)
-    reds = colorNumeric("Reds", domain = dat$obitos_100k)
-  redsNA <- colorNumeric("Reds", domain = dat$obitos_100k, na.color=rgb(0,0,0,0))
+  dat <- mun_munis %>% filter(estado == input$estado)
+  reds <- colorNumeric("Reds", domain = dat$obitos_100k)
+  redsNA <- colorNumeric("Reds", domain = dat$obitos_100k, na.color = rgb(0, 0, 0, 0))
   leaflet(data = dat, options = leafletOptions(zoomControl = FALSE)) %>%
-    addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-             attribution = paste(
-               '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-               '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-             )
-    ) %>% addPolygons(weight = 0.1, fillColor = ~reds(obitos_100k),
-                      color = "reds",fillOpacity = 0.9,
-                      smoothFactor = 0.5,
-                      popup = paste0(dat$name_muni,": ", 
-                                     format(round(dat$obitos_100k,2), decimal.mark=",",
-                                            big.mark=".",small.mark="."),"<br>",
-                                     "População: ", round(dat$pop_2019/1000,3)," Mil")) %>% 
-    addLegend(position = "bottomright", pal = redsNA, values = ~obitos_100k, 
-              title="Óbitos (por 100 mil<br>habitantes)", na.label = "", opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ reds(obitos_100k),
+      color = "reds", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        dat$name_muni, ": ",
+        format(round(dat$obitos_100k, 2),
+          decimal.mark = ",",
+          big.mark = ".", small.mark = "."
+        ), "<br>",
+        "População: ", round(dat$pop_2019 / 1000, 3), " Mil"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = redsNA, values = ~obitos_100k,
+      title = "Óbitos (por 100 mil<br>habitantes)", na.label = "", opacity = 1
+    ) %>%
+    setView(lat = st_coordinates(dat)[, 2] %>% mean(), lng = st_coordinates(dat)[, 1] %>% mean(), zoom = 5)
 })
 ```
 
@@ -166,25 +218,34 @@ renderLeaflet({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
-  dat <- mun_munis %>% filter(estado==input$estado)
-    reds = colorNumeric("YlOrRd", domain = dat$letalidade)
-  redsNA <- colorNumeric("YlOrRd", domain = dat$letalidade, na.color=rgb(0,0,0,0))
+  dat <- mun_munis %>% filter(estado == input$estado)
+  reds <- colorNumeric("YlOrRd", domain = dat$letalidade)
+  redsNA <- colorNumeric("YlOrRd", domain = dat$letalidade, na.color = rgb(0, 0, 0, 0))
   leaflet(data = dat, options = leafletOptions(zoomControl = FALSE)) %>%
-    addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-             attribution = paste(
-               '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
-               '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
-             )
-    ) %>% addPolygons(weight = 0.1, fillColor = ~reds(letalidade),
-                      color = "reds",fillOpacity = 0.9,
-                      smoothFactor = 0.5,
-                      popup = paste0(dat$name_muni,": ", 
-                                     format(round(dat$letalidade,2),
-                                            decimal.mark=",", big.mark=".",
-                                           small.mark="."),"%","<br>",
-                                     "População: ", round(dat$pop_2019/1000,3)," Mil")) %>% 
-    addLegend(position = "bottomright", pal = redsNA, values = ~letalidade, 
-              title="Taxa de<br>Letalidade (%)", na.label = "", opacity = 1) %>% setView(lat=st_coordinates(dat)[,2] %>% mean(), lng=st_coordinates(dat)[,1] %>% mean(), zoom=5)
+    addTiles("http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      attribution = paste(
+        '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+        '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+      )
+    ) %>%
+    addPolygons(
+      weight = 0.1, fillColor = ~ reds(letalidade),
+      color = "reds", fillOpacity = 0.9,
+      smoothFactor = 0.5,
+      popup = paste0(
+        dat$name_muni, ": ",
+        format(round(dat$letalidade, 2),
+          decimal.mark = ",", big.mark = ".",
+          small.mark = "."
+        ), "%", "<br>",
+        "População: ", round(dat$pop_2019 / 1000, 3), " Mil"
+      )
+    ) %>%
+    addLegend(
+      position = "bottomright", pal = redsNA, values = ~letalidade,
+      title = "Taxa de<br>Letalidade (%)", na.label = "", opacity = 1
+    ) %>%
+    setView(lat = st_coordinates(dat)[, 2] %>% mean(), lng = st_coordinates(dat)[, 1] %>% mean(), zoom = 5)
 })
 ```
 
@@ -194,51 +255,76 @@ renderLeaflet({
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderDataTable({
-  tabela <- 
-    mun_munis %>% filter(estado==input$estado) %>% st_as_sf() %>% st_drop_geometry() %>% 
-    mutate(casosAcumulado=replace_na(casosAcumulado,0),
-           obitosAcumulado=replace_na(obitosAcumulado,0),
-           casos_100k=replace_na(casos_100k,0),
-           obitos_100k=replace_na(obitos_100k,0)) %>% 
-    mutate(Tax_Let=
-             case_when(
-      round(100*obitosAcumulado/casosAcumulado,2)<10 ~ paste0('0',ifelse(casosAcumulado==0,0,round(100*obitosAcumulado/casosAcumulado,2)),"%"),
-      TRUE ~ paste0(ifelse(casosAcumulado==0,0,round(100*obitosAcumulado/casosAcumulado,2)),"%")
+  tabela <-
+    mun_munis %>%
+    filter(estado == input$estado) %>%
+    st_as_sf() %>%
+    st_drop_geometry() %>%
+    mutate(
+      casosAcumulado = replace_na(casosAcumulado, 0),
+      obitosAcumulado = replace_na(obitosAcumulado, 0),
+      casos_100k = replace_na(casos_100k, 0),
+      obitos_100k = replace_na(obitos_100k, 0)
+    ) %>%
+    mutate(
+      Tax_Let =
+        case_when(
+          round(100 * obitosAcumulado / casosAcumulado, 2) < 10 ~ paste0("0", ifelse(casosAcumulado == 0, 0, round(100 * obitosAcumulado / casosAcumulado, 2)), "%"),
+          TRUE ~ paste0(ifelse(casosAcumulado == 0, 0, round(100 * obitosAcumulado / casosAcumulado, 2)), "%")
+        ),
+      casosAcumulado = format(casosAcumulado,
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
       ),
-           casosAcumulado=format(casosAcumulado, decimal.mark=".", big.mark=",", 
-                            small.mark=","),
-           obitosAcumulado=format(obitosAcumulado, decimal.mark=".", big.mark=",", 
-                         small.mark=","),
-           casos_100k=format(round(casos_100k,2), decimal.mark=".", big.mark=",", 
-                                small.mark=","),
-           obitos_100k=format(round(obitos_100k,2), decimal.mark=".", big.mark=",", 
-                             small.mark=","),
-           pop_2019=format(pop_2019, decimal.mark=".", big.mark=",", 
-                          small.mark=",")) %>% 
-    select(name_muni, casosAcumulado, casos_100k, obitosAcumulado, obitos_100k, Tax_Let, 
-           pop_2019) %>% 
+      obitosAcumulado = format(obitosAcumulado,
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      ),
+      casos_100k = format(round(casos_100k, 2),
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      ),
+      obitos_100k = format(round(obitos_100k, 2),
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      ),
+      pop_2019 = format(pop_2019,
+        decimal.mark = ".", big.mark = ",",
+        small.mark = ","
+      )
+    ) %>%
+    select(
+      name_muni, casosAcumulado, casos_100k, obitosAcumulado, obitos_100k, Tax_Let,
+      pop_2019
+    ) %>%
     datatable(
-      colnames=c("Estado", "Casos Acumulados", "Casos (Por 100 Mil Hab.)","Óbitos Acumulados", "Óbitos (Por 100 Mil Hab.)", "Taxa de Letalidade", "População Estimada"), 
-              options = list(order=list(list(1, 'desc'))), rownames = F, style = 'bootstrap')
-  
+      colnames = c("Estado", "Casos Acumulados", "Casos (Por 100 Mil Hab.)", "Óbitos Acumulados", "Óbitos (Por 100 Mil Hab.)", "Taxa de Letalidade", "População Estimada"),
+      options = list(order = list(list(1, "desc"))), rownames = F, style = "bootstrap"
+    )
 })
 ```
 
 #### **Compare Municípios** {.tabset .tabset-pills}
 
 ```{r}
-mun <- mun %>% filter(populacaoTCU2019>=100000) %>% 
-  mutate(pop_2019=populacaoTCU2019,
-                      mun_est=paste(municipio,'-',estado))
+mun <- mun %>%
+  filter(populacaoTCU2019 >= 100000) %>%
+  mutate(
+    pop_2019 = populacaoTCU2019,
+    mun_est = paste(municipio, "-", estado)
+  )
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 tags$div(selectizeInput(
-  'munic', label = 'Escolha Municípios:',
-  choices = sort(unique(mun$mun_est)), 
-  selected = (mun %>% filter(data==max(data)) %>% arrange(desc(casosAcumulado)))$mun_est[1:6], 
-  width='1000px', multiple=T, options = list(maxItems = 6)), 
-  style="display:inline-block")
+  "munic",
+  label = "Escolha Municípios:",
+  choices = sort(unique(mun$mun_est)),
+  selected = (mun %>% filter(data == max(data)) %>% arrange(desc(casosAcumulado)))$mun_est[1:6],
+  width = "1000px", multiple = T, options = list(maxItems = 6)
+),
+style = "display:inline-block"
+)
 ```
 
 Escolha até 6 municípios (com mais de 100 mil habitantes) de todo o Brasil e os compare com relação aos:
@@ -247,16 +333,29 @@ Escolha até 6 municípios (com mais de 100 mil habitantes) de todo o Brasil e o
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
-  d <- mun %>% filter(data==max(data)) %>% filter(mun_est %in% input$munic)
-  
-  ggplotly(ggplot(data = d, aes(x=reorder(mun_est, -casosAcumulado), 
-                                y=casosAcumulado/1000, fill=mun_est,
-                                text=paste0(mun_est,": ",
-                                            format(casosAcumulado, decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-  geom_bar(stat="identity") + coord_flip() + xlab("") + 
-  ylab("Casos Acumulados (em milhares)") + darktheme + theme(legend.position = "none") +
-  ggtitle("Casos Acumulados") + scale_fill_hue(l=40), tooltip = "text") 
+  d <- mun %>%
+    filter(data == max(data)) %>%
+    filter(mun_est %in% input$munic)
+
+  ggplotly(ggplot(data = d, aes(
+    x = reorder(mun_est, -casosAcumulado),
+    y = casosAcumulado / 1000, fill = mun_est,
+    text = paste0(
+      mun_est, ": ",
+      format(casosAcumulado,
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    )
+  )) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    xlab("") +
+    ylab("Casos Acumulados (em milhares)") +
+    darktheme +
+    theme(legend.position = "none") +
+    ggtitle("Casos Acumulados") +
+    scale_fill_hue(l = 40), tooltip = "text")
 })
 ```
 
@@ -264,20 +363,23 @@ renderPlotly({
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   d <- mun %>% filter(mun_est %in% input$munic)
-  
-  ggplotly(ggplot(data = d, aes(x=data, y=casosAcumulado/1000, color=mun_est)) + 
-  geom_line(size=0.8) + 
-    geom_point(size=.8, aes(text=paste0(format(data, "%d %b %Y"),": ",format(round(casosAcumulado/1000,2), decimal.mark=",", big.mark=".",
-                                          small.mark=".")))) + 
-    xlab("") + 
-  ylab("Casos Confirmados (em milhares)") + 
-  ggtitle("Evolução: Casos Acumulados") + darktheme + labs(color="") + theme(legend.position="bottom") +
-  scale_color_hue(l=40), tooltip = "text") %>% layout(hovermode = "x unified")
-  
+
+  ggplotly(ggplot(data = d, aes(x = data, y = casosAcumulado / 1000, color = mun_est)) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(casosAcumulado / 1000, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    xlab("") +
+    ylab("Casos Confirmados (em milhares)") +
+    ggtitle("Evolução: Casos Acumulados") +
+    darktheme +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
 #### {-}
 
 # {-}
-
