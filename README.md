@@ -14,7 +14,7 @@ As estimativas das populações são coletados do [World Bank](https://data.worl
 Os dados de covid no Brasil são coletados do [Painel Coronavírus](https://covid.saude.gov.br/).    
 
 ## Coleta dos dados
-Os dados são coletados pelo **R**, através de nosso [pacote](https://github.com/sjlva/covidRdata).
+Os dados são coletados pelo **R**, através de nosso cronjob.
 
 ## Estrutura do projeto
 Nosso projeto está estruturado da seguinte forma:
@@ -23,6 +23,8 @@ Nosso projeto está estruturado da seguinte forma:
 - Na pasta *imagens*: temos algumas imagens que funcionam como ícones para o painel.  
 - Na pasta *www*: temos o *bootstrap*, nosso *css* que aplica estilo ao nosso painel.
 - No diretório principal temos 4 arquivos em *Rmarkdown*, que operam de forma independente, facilitando o trabalho em equipe.
+- Na pasta *Relatório Descritiva*: temos nosso relatório descritivo.
+- Na pasta *cronjob*: temos os scripts necessários para realizar o download automático dos banco de dados citados.
 
 ## Arquivos .Rmd
 O painel executa os arquivos .Rmd na seguinte ordem:
