@@ -22,7 +22,7 @@ Este relatório tem como objetivo descrever os métodos, tratamentos e procedime
 # Obtenção dos Dados
 
 Foram coletados dados a nível mundial a partir do [**Repositório da Universidade Johns (JHU) Hopkins**](https://github.com/CSSEGISandData) e a nível nacional por meio do [**Ministério da Saúde (MS)**](https://covid.saude.gov.br).  
-Para a coleta automática dos dados, que se atualizam diariamente, foi construído um pacote chamado [**CovidRdata**](https://github.com/sjlva/covidRdata) que contém funções que baixam os dados da Universidade Johns Hopkins e do Ministério da Saúde de um outro [**Repositório GitHub**](https://github.com/sjlva/Covid19BR) em um formato mais compacto e de mais rápida leitura pelo R (.rds).  Para atualizar os dados em formato .rds neste repositório diariamente, foi criado um cron job (ver pasta cronjob).
+Para a coleta automática dos dados, que se atualizam diariamente, foi construído um cronjob que coleta os dados dos repositórios citados e os disponibiliza no [**Repositório GitHub**](https://github.com/sjlva/Covid19BR) em um formato mais compacto e de mais rápida leitura pelo R (.rds).  Para atualizar os dados em formato .rds neste repositório diariamente, foi criado um cron job (ver pasta cronjob).
 
 Cron job é uma ferramenta que permite agendar e controlar tarefas a serem executadas em tempos especificados. Isto é, podemos, através deste método definir rotinas que serão executadas em horários específicos.
 
