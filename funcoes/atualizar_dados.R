@@ -1,3 +1,13 @@
+download_dataset <- function(radical = "jhu") {
+  radical <- ifelse(radical == "ms_br", "ms", radical)
+  url <- paste0(
+    "https://github.com/sjlva/Covid19BR/blob/master/rds/covid_",
+    radical,
+    ".rds?raw=true")
+  df <- readr::read_rds(url(url))
+  return(df)
+}
+
 datasets <- function() {
   # Inserir aqui nome do dataset, caso outro seja adcionado
   datasets <- c("jhu", "google", "ms_br")
@@ -5,7 +15,7 @@ datasets <- function() {
 }
 
 atualizar_dado <- function(dataset) {
-  df <- covidRdata::download_dataset(dataset)
+  df <- download_dataset(dataset)
   saveRDS(df, paste0("dados/", dataset, ".rds"))
 }
 
