@@ -22,7 +22,19 @@ Este relatório tem como objetivo descrever os métodos, tratamentos e procedime
 # Obtenção dos Dados
 
 Foram coletados dados a nível mundial a partir do [**Repositório da Universidade Johns (JHU) Hopkins**](https://github.com/CSSEGISandData) e a nível nacional por meio do [**Ministério da Saúde (MS)**](https://covid.saude.gov.br).  
-Para a coleta automática dos dados, que se atualizam diariamente, foi construído um pacote chamado [**CovidRdata**](https://github.com/sjlva/covidRdata) que contém funções que baixam os dados da Universidade Johns Hopkins e do Ministério da Saúde de um outro [**Repositório GitHub**](https://github.com/sjlva/Covid19BR) em um formato mais compacto e de mais rápida leitura pelo R (.rds).  Para atualizar os dados em formato .rds neste repositório diariamente, .... **EXPLICAÇÃO DO RAFAEL**
+Para a coleta automática dos dados, que se atualizam diariamente, foi construído um pacote chamado [**CovidRdata**](https://github.com/sjlva/covidRdata) que contém funções que baixam os dados da Universidade Johns Hopkins e do Ministério da Saúde de um outro [**Repositório GitHub**](https://github.com/sjlva/Covid19BR) em um formato mais compacto e de mais rápida leitura pelo R (.rds).  Para atualizar os dados em formato .rds neste repositório diariamente, foi criado um cron job (ver pasta cronjob).
+
+Cron job é uma ferramenta que permite agendar e controlar tarefas a serem executadas em tempos especificados. Isto é, podemos, através deste método definir rotinas que serão executadas em horários específicos.
+
+Na pasta `cronjob` é possível encontrar 4 arquivos:  
+1. `get_ms_data.R`: baixa dados a nível nacional (Brasil).  
+2. `get_jhu_data.R`: baixa dados a nível mundial.  
+3. `get_google_data.R`:baixa dados de mobilidade do Google.  
+4. `commit.sh`: acessa a pasta `cronjob` e executa os 3 scripts acima, após isso, adiciona ao [**Covid19BR**](https://github.com/sjlva/Covid19BR) os arquivos atualizados.    
+
+Podemos entender melhor o funcionamento desta rotina pelo fluxograma abaixo:  
+
+![Fluxograma Cronjob](fluxograma_cronjob.png){ width=50% }
 
 Esta foi a maneira encontrada para solucionar o problema de leitura e acesso automático aos dados. Principalmente porque os dados da Johns Hopkins são separados em arquivos diários e cada arquivo pode sofrer atualizações isoladas forçando a leitura de todos os arquivos para uma atualização correta das informações. Além disso, inicialmente, os dados do Ministério da Saúde eram disponibilizados em formato .xlsx que são arquivos muito grandes e de lenta leitura. Desta forma, o painel interativo utiliza as funções do pacote criado para obter os dados utilizados na análise de maneira mais fácil e rápida.  
 
