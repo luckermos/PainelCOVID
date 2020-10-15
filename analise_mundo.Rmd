@@ -569,7 +569,7 @@ darktheme <- theme_minimal() + theme(
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 tags$div(selectizeInput(
   "paises",
-  label = "Escolha Até 6 Países:",
+  label = "Escolha até 6 Países:",
   choices = sort(unique(covid$Country_Region)),
   selected = (covid %>% filter(date == max(date)) %>% arrange(desc(Confirmed)))$Country_Region[1:6],
   width = "1000px", multiple = T, options = list(maxItems = 6)
@@ -578,7 +578,7 @@ style = "display:inline-block"
 )
 ```
 
-
+Compare os Países escolhidos com relação aos:
 
 ##### Casos
 

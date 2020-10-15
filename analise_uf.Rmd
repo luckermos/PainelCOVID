@@ -313,12 +313,18 @@ mun <- mun %>%
     pop_2019 = populacaoTCU2019,
     mun_est = paste(municipio, "-", estado)
   )
+
+mun_semana <- mun_semana %>%
+  filter(pop_2019 >= 100000) %>%
+  mutate(
+    mun_est = paste(municipio, "-", estado)
+  )
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 tags$div(selectizeInput(
   "munic",
-  label = "Escolha Municípios:",
+  label = "Escolha até 6 Municípios (com mais de 100 mil habitantes) de todo o Brasil:",
   choices = sort(unique(mun$mun_est)),
   selected = (mun %>% filter(data == max(data)) %>% arrange(desc(casosAcumulado)))$mun_est[1:6],
   width = "1000px", multiple = T, options = list(maxItems = 6)
@@ -327,7 +333,7 @@ style = "display:inline-block"
 )
 ```
 
-Escolha até 6 municípios (com mais de 100 mil habitantes) de todo o Brasil e os compare com relação aos:
+Compare os Municípios escolhidos com relação aos:
 
 ##### Casos
 
@@ -376,6 +382,239 @@ renderPlotly({
     darktheme +
     labs(color = "") +
     theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+})
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderPlotly({
+  d <- mun %>% filter(mun_est %in% input$munic)
+  
+  ggplotly(ggplot(data = d, aes(x = data, y = casosNovos, color = mun_est)) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(casosNovos, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    xlab("") +
+    ylab("Novos Casos") +
+    ggtitle("Novos Casos Diários") +
+    darktheme +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+})
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderPlotly({
+  d <- mun_semana %>% filter(mun_est %in% input$munic)
+  
+  ggplotly(ggplot(data = d, aes(x = semanaEpi, y = casosNovos, color = mun_est)) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(semanaEpi, ": ", format(round(casosNovos, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    xlab("Semana Epidemiológica") +
+    ylab("Novos Casos") +
+    ggtitle("Novos Casos por Semana Epidemiológica") +
+    darktheme +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+})
+```
+
+##### Casos Por Habitantes
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderPlotly({
+  d <- mun %>%
+    filter(data == max(data)) %>%
+    filter(mun_est %in% input$munic)
+  
+  ggplotly(ggplot(data = d, aes(
+    x = reorder(mun_est, -casosAcumulado / pop_2019),
+    y = 1000000 * casosAcumulado / pop_2019, fill = mun_est,
+    text = paste0(
+      name_state, ": ",
+      format(1000000 * casosAcumulado / pop_2019,
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    )
+  )) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    xlab("") +
+    ylab("Casos por Milhão de Habitantes") +
+    darktheme +
+    theme(legend.position = "none") +
+    ggtitle("Casos Acumulados por Milhão de Habitantes") +
+    scale_fill_hue(l = 40), tooltip = "text")
+})
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderPlotly({
+  d <- mun %>% filter(mun_est %in% input$munic)
+  ggplotly(ggplot(data = d, aes(
+    x = data, y = 1000000 * casosAcumulado / pop_2019,
+    color = mun_est
+  )) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(1000000 * casosAcumulado / pop_2019, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("") +
+    ylab("Casos (por milhão de habitantes)") +
+    ggtitle("Evolução: Casos Acumulados por Milhão de Habitantes") +
+    labs(color = "") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+})
+```
+
+##### Óbitos
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderPlotly({
+  d <- mun %>%
+    filter(data == max(data)) %>%
+    filter(mun_est %in% input$munic)
+  ggplotly(ggplot(data = d, aes(
+    x = reorder(mun_est, -obitosAcumulado),
+    y = obitosAcumulado / 1000, fill = mun_est,
+    text = paste0(
+      name_state, ": ",
+      format(obitosAcumulado,
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    )
+  )) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    xlab("") +
+    ylab("Óbitos (em milhares)") +
+    darktheme +
+    theme(legend.position = "none") +
+    ggtitle("Óbitos Acumulados") +
+    scale_fill_hue(l = 40), tooltip = "text")
+})
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderPlotly({
+  d <- mun %>% filter(mun_est %in% input$munic)
+  ggplotly(ggplot(data = d, aes(x = data, y = obitosAcumulado / 1000, color = mun_est)) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(obitosAcumulado / 1000, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("") +
+    ylab("Óbitos (em milhares)") +
+    ggtitle("Evolução: Óbitos Acumulados") +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+})
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderPlotly({
+  d <- mun %>% filter(mun_est %in% input$munic)
+  ggplotly(ggplot(
+    data = d,
+    aes(x = data, y = obitosNovos, color = mun_est)
+  ) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(obitosNovos, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("") +
+    ylab("Novos Óbitos") +
+    ggtitle("Novos Óbitos") +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+})
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderPlotly({
+  d <- mun_semana %>% filter(mun_est %in% input$munic)
+  ggplotly(ggplot(
+    data = d,
+    aes(x = semanaEpi, y = obitosNovos, color = mun_est)
+  ) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(semanaEpi, ": ", format(round(obitosNovos, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("Semana Epidemiológica") +
+    ylab("Novos Óbitos") +
+    ggtitle("Novos Óbitos por Semana Epidemiológica") +
+    labs(color = "") +
+    theme(legend.position = "bottom") +
+    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+})
+```
+
+##### Óbitos Por Habitantes
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderPlotly({
+  d <- mun %>%
+    filter(data == max(data)) %>%
+    filter(mun_est %in% input$munic)
+  ggplotly(ggplot(data = d, aes(
+    x = reorder(mun_est, -obitosAcumulado / pop_2019),
+    y = 1000000 * obitosAcumulado / pop_2019, fill = mun_est,
+    text = paste0(
+      name_state, ": ",
+      format(round(1000000 * obitosAcumulado / pop_2019, 2),
+        decimal.mark = ",", big.mark = ".",
+        small.mark = "."
+      )
+    )
+  )) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    xlab("") +
+    ylab("Óbitos por Milhão de Habitantes") +
+    darktheme +
+    theme(legend.position = "none") +
+    ggtitle("Óbitos Acumulados por Milhão de Habitantes") +
+    scale_fill_hue(l = 40), tooltip = "text")
+})
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderPlotly({
+  d <- mun %>% filter(mun_est %in% input$munic)
+  ggplotly(ggplot(
+    data = d,
+    aes(x = data, y = 1000000 * obitosAcumulado / pop_2019, color = mun_est)
+  ) +
+    geom_line(size = 0.8) +
+    geom_point(size = .8, aes(text = paste0(format(data, "%d %b %Y"), ": ", format(round(1000000 * obitosAcumulado / pop_2019, 2),
+      decimal.mark = ",", big.mark = ".",
+      small.mark = "."
+    )))) +
+    darktheme +
+    xlab("") +
+    ylab("Óbitos (por milhão de habitantes)") +
+    ggtitle("Evolução: Óbitos Acumulados (por milhão de habitantes)") +
+    labs(color = "") +
     scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
