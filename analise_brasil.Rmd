@@ -347,7 +347,7 @@ covid_brasil_week <- covid_brasil %>%
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 tags$div(selectizeInput(
   "estados",
-  label = "Escolha até 6 Estados:",
+  label = "Escolha até 6 UF's:",
   choices = sort(unique(est2$name_state)),
   selected = (est2 %>% filter(data == max(data)) %>% arrange(desc(casosAcumulado)))$name_state[1:6],
   width = "1000px", multiple = T, options = list(maxItems = 6)
@@ -356,7 +356,7 @@ style = "display:inline-block"
 )
 ```
 
-Compare os Estados escolhidos com relação aos:
+Compare as UF's escolhidos com relação aos:
 
 ##### Casos
 

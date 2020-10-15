@@ -438,7 +438,7 @@ renderPlotly({
     x = reorder(mun_est, -casosAcumulado / pop_2019),
     y = 1000000 * casosAcumulado / pop_2019, fill = mun_est,
     text = paste0(
-      name_state, ": ",
+      mun_est, ": ",
       format(1000000 * casosAcumulado / pop_2019,
         decimal.mark = ",", big.mark = ".",
         small.mark = "."
@@ -488,7 +488,7 @@ renderPlotly({
     x = reorder(mun_est, -obitosAcumulado),
     y = obitosAcumulado / 1000, fill = mun_est,
     text = paste0(
-      name_state, ": ",
+      mun_est, ": ",
       format(obitosAcumulado,
         decimal.mark = ",", big.mark = ".",
         small.mark = "."
@@ -580,7 +580,7 @@ renderPlotly({
     x = reorder(mun_est, -obitosAcumulado / pop_2019),
     y = 1000000 * obitosAcumulado / pop_2019, fill = mun_est,
     text = paste0(
-      name_state, ": ",
+      mun_est, ": ",
       format(round(1000000 * obitosAcumulado / pop_2019, 2),
         decimal.mark = ",", big.mark = ".",
         small.mark = "."
