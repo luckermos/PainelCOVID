@@ -353,11 +353,9 @@ renderLeaflet({
   rc1 <- colorRampPalette(colors = c("dodgerblue4", "white"), 
                           space = "Lab")(Mod(as.integer(min(world_var_casos$var_casos, na.rm = T))))
 
-  ## Make vector of colors for values larger than 0 (180 colors)
   rc2 <- colorRampPalette(colors = c("white", "firebrick4"), 
                           space = "Lab")(Mod(as.integer(max(world_var_casos$var_casos, na.rm = T))))
 
-  ## Combine the two color palettes
   rampcols <- c(rc1, rc2)
   
   greens = colorNumeric(rampcols, domain = world_var_casos$var_casos)
@@ -459,11 +457,9 @@ renderLeaflet({
   rc1 <- colorRampPalette(colors = c("dodgerblue4", "white"), 
                           space = "Lab")(Mod(as.integer(min(world_var_casos$var_obitos, na.rm = T))))
 
-  ## Make vector of colors for values larger than 0 (180 colors)
   rc2 <- colorRampPalette(colors = c("white", "firebrick4"), 
                           space = "Lab")(Mod(as.integer(max(world_var_casos$var_obitos, na.rm = T))))
 
-  ## Combine the two color palettes
   rampcols <- c(rc1, rc2)
   
   greens = colorNumeric(rampcols, domain = world_var_casos$var_obitos)
