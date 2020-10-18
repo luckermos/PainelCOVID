@@ -56,6 +56,29 @@ est <- mutate(est,
   letalidade = 100 * obitosAcumulado / casosAcumulado
 )
 
+# Variação de Casos e Óbitos
+d <- est$data %>% max() # data-base mais recente
+semana_anterior <- est %>% filter(data <= d & data>=d-13 & data<d-6) # penultima semana
+ultima_semana <- est %>% filter(data <= d & data>=d-13 & data>=d-6) # última semana
+
+semana_anterior <- semana_anterior %>% group_by(estado) %>% 
+  summarise(Total_Confirmed_ant=sum(casosNovos), # Total de novos casos na penúltima semana
+            Total_Deaths_ant=sum(obitosNovos),
+            New_Confirmed_ant=mean(casosNovos),
+            New_Deaths_ant=mean(obitosNovos)) %>% 
+  select(estado, New_Confirmed_ant, New_Deaths_ant, Total_Confirmed_ant, Total_Deaths_ant)
+
+ultima_semana <- ultima_semana %>% group_by(estado) %>% 
+  summarise(Total_Confirmed=sum(casosNovos), # Total de novos casos na última semana
+            Total_Deaths=sum(obitosNovos),
+            New_Confirmed=mean(casosNovos),
+            New_Deaths=mean(obitosNovos)) %>%
+  select(estado, New_Confirmed, New_Deaths, Total_Confirmed, Total_Deaths)
+
+acomp_est <- left_join(x=ultima_semana, y=semana_anterior, by="estado") %>% 
+  mutate(var_casos=ifelse(New_Confirmed_ant==0, NA, ((New_Confirmed-New_Confirmed_ant)/New_Confirmed_ant)*100),
+         var_obitos=ifelse(New_Deaths_ant==0, NA, ((New_Deaths-New_Deaths_ant)/New_Deaths_ant)*100)) 
+
 
 
 # Trazendo informação geométrica
@@ -65,6 +88,8 @@ est <- brasil %>%
 est2 <- est # Armazenando todas as datas
 
 est <- filter(est, data == max(est$data)) # Data mais recente
+
+est <- left_join(x=est, y=acomp_est, by="estado")
 
 ## Agrupando dados para o Brasil
 covid_brasil <- reg %>%
@@ -155,6 +180,44 @@ renderLeaflet({
 })
 ```
 
+
+##### Variação de Novos Casos
+
+O mapa abaixo mostra a **variação da média de novos casos dos últimos 7 dias com relação à media dos 7 dias antecedentes a eles**.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderLeaflet({
+  
+  rc1 <- colorRampPalette(colors = c("dodgerblue4", "white"), 
+                          space = "Lab")(Mod(as.integer(min(est$var_casos, na.rm = T))))
+
+  ## Make vector of colors for values larger than 0 (180 colors)
+  rc2 <- colorRampPalette(colors = c("white", "firebrick4"), 
+                          space = "Lab")(Mod(as.integer(max(est$var_casos, na.rm = T))))
+
+  ## Combine the two color palettes
+  rampcols <- c(rc1, rc2)
+  
+  greens = colorNumeric(rampcols, domain = est$var_casos)
+  greensNA <- colorNumeric(rampcols, domain = est$var_casos, na.color=rgb(0,0,0,0))
+  leaflet(data = est) %>%
+  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+           attribution = paste(
+             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+           )
+  ) %>% addPolygons(weight = 0.1, fillColor = ~greens(var_casos),
+                    color = "green",fillOpacity = 0.9,
+                    smoothFactor = 0.5,
+                    popup = paste0(est$name_state,": ", 
+                                   round(est$var_casos,2), "%","<br>",
+                                   "População: ", round(est$pop_2019/1000000,2)," Mi")) %>% 
+  addLegend(position = "bottomright", pal = greensNA, values = ~var_casos, 
+            title="Variação de<br>Novos Casos (%)", na.label = "", 
+            opacity = 1) %>% setView(lat = -10, lng = -48, zoom = 3)
+})
+```
+
 ##### Óbitos
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -222,6 +285,44 @@ renderLeaflet({
     setView(lat = -10, lng = -48, zoom = 3)
 })
 ```
+
+##### Variação de Novos Óbitos
+
+O mapa abaixo mostra a **variação da média de novos óbitos dos últimos 7 dias com relação à media dos 7 dias antecedentes a eles**.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderLeaflet({
+  
+  rc1 <- colorRampPalette(colors = c("dodgerblue4", "white"), 
+                          space = "Lab")(Mod(as.integer(min(est$var_obitos, na.rm = T))))
+
+  ## Make vector of colors for values larger than 0 (180 colors)
+  rc2 <- colorRampPalette(colors = c("white", "firebrick4"), 
+                          space = "Lab")(Mod(as.integer(max(est$var_obitos, na.rm = T))))
+
+  ## Combine the two color palettes
+  rampcols <- c(rc1, rc2)
+  
+  greens = colorNumeric(rampcols, domain = est$var_obitos)
+  greensNA <- colorNumeric(rampcols, domain = est$var_obitos, na.color=rgb(0,0,0,0))
+  leaflet(data = est) %>%
+  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+           attribution = paste(
+             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+           )
+  ) %>% addPolygons(weight = 0.1, fillColor = ~greens(var_obitos),
+                    color = "green",fillOpacity = 0.9,
+                    smoothFactor = 0.5,
+                    popup = paste0(est$name_state,": ", 
+                                   round(est$var_obitos,2), "%","<br>",
+                                   "População: ", round(est$pop_2019/1000000,2)," Mi")) %>% 
+  addLegend(position = "bottomright", pal = greensNA, values = ~var_obitos, 
+            title="Variação de<br>Novos Óbitos (%)", na.label = "", 
+            opacity = 1) %>% setView(lat = -10, lng = -48, zoom = 3)
+})
+```
+
 
 ##### Taxa de Letalidade
 

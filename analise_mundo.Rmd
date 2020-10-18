@@ -173,7 +173,12 @@ world <- left_join(x = world, y = pop_2019, by = c("iso_a3" = "Country Code")) %
     Confirmed_pop = (Confirmed / pop_est) * 100000,
     Deaths_pop = (Deaths / pop_est) * 100000,
     Treatment_pop = ((Confirmed - Recovered) / pop_est) * 100000
-  )
+  ) %>% 
+  mutate(Treatment_pop = case_when(
+    IND_INFO == "<span style='color:DarkRed'>Sem Informação</span>" ~ NA_real_, # Sem info de recuperação
+    IND_INFO == "<span style='color:DarkGreen'>Atualizado</span>" ~ Treatment_pop, # atualizado
+    TRUE ~ NA_real_
+  ))
 
 ## Trazendo info sobre população para os dados covid
 covid <- left_join(
@@ -218,14 +223,47 @@ covid_world <- covid %>%
 ## Mapa "sem" Iêmen
 world_4 <- world %>% mutate(
   Deaths = case_when(
-    name_long == "Yemen" ~ 0,
+    name_long == "Yemen" ~ NA_real_,
     TRUE ~ Deaths
   ),
 )
 
+
+### Variação de Casos e Óbitos
+d <- covid$date %>% max() # data-base mais recente
+semana_anterior <- covid %>% filter(date <= d & date>=d-13 & date<d-6) # penultima semana
+ultima_semana <- covid %>% filter(date <= d & date>=d-13 & date>=d-6) # última semana
+
+semana_anterior <- semana_anterior %>% group_by(Country_Region) %>% 
+  summarise(Total_Confirmed_ant=sum(New_Confirmed), # Total de novos casos na penúltima semana
+            Total_Deaths_ant=sum(New_Deaths),
+            New_Confirmed_ant=mean(New_Confirmed),
+            New_Deaths_ant=mean(New_Deaths)) %>% 
+  select(Country_Region, New_Confirmed_ant, New_Deaths_ant, Total_Confirmed_ant, Total_Deaths_ant)
+
+ultima_semana <- ultima_semana %>% group_by(Country_Region) %>% 
+  summarise(Total_Confirmed=sum(New_Confirmed), # Total de novos casos na última semana
+            Total_Deaths=sum(New_Deaths),
+            New_Confirmed=mean(New_Confirmed),
+            New_Deaths=mean(New_Deaths)) %>%
+  select(Country_Region, New_Confirmed, New_Deaths, Total_Confirmed, Total_Deaths)
+
+acomp_paises <- left_join(x=ultima_semana, y=semana_anterior, by="Country_Region") %>% 
+  mutate(var_casos=ifelse(New_Confirmed_ant==0, NA, ((New_Confirmed-New_Confirmed_ant)/New_Confirmed_ant)*100),
+         var_casos=ifelse(Total_Confirmed<100,NA,var_casos), # Pelo menos 20 obitos nas duas semanas
+         var_casos=ifelse(Total_Confirmed_ant<100,NA,var_casos),
+         var_obitos=ifelse(New_Deaths_ant==0, NA, ((New_Deaths-New_Deaths_ant)/New_Deaths_ant)*100),
+         var_obitos=ifelse(Total_Deaths<20,NA,var_obitos), # Pelo menos 20 obitos nas duas semanas
+         var_obitos=ifelse(Total_Deaths_ant<20,NA,var_obitos)) 
+
+world_var_casos <- left_join(x=world, y=acomp_paises, by=c("name_long"="Country_Region"))
+
+
 ## Transformando Mapas 'sf' para 'st' para leaflet.
 world <- as(world, Class = "Spatial")
 world_4 <- as(world_4, Class = "Spatial")
+
+world_var_casos <- as(world_var_casos, Class="Spatial")
 ```
 
 
@@ -268,6 +306,7 @@ renderLeaflet({
 })
 ```
 
+
 ##### Casos por Habitantes
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -302,6 +341,45 @@ renderLeaflet({
     setView(lat = 15, lng = 10, zoom = 2)
 })
 ```
+
+
+##### Variação de Novos Casos
+
+O mapa abaixo mostra a **variação da média de novos casos dos últimos 7 dias com relação à media dos 7 dias antecedentes a eles**. Países que obtiveram **menos de 100 novos casos** nos últimos 7 dias ou nos 7 dias anteriores a esses foram **desconsiderados** da análise.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderLeaflet({
+  
+  rc1 <- colorRampPalette(colors = c("dodgerblue4", "white"), 
+                          space = "Lab")(Mod(as.integer(min(world_var_casos$var_casos, na.rm = T))))
+
+  ## Make vector of colors for values larger than 0 (180 colors)
+  rc2 <- colorRampPalette(colors = c("white", "firebrick4"), 
+                          space = "Lab")(Mod(as.integer(max(world_var_casos$var_casos, na.rm = T))))
+
+  ## Combine the two color palettes
+  rampcols <- c(rc1, rc2)
+  
+  greens = colorNumeric(rampcols, domain = world_var_casos$var_casos)
+  greensNA <- colorNumeric(rampcols, domain = world_var_casos$var_casos, na.color=rgb(0,0,0,0))
+  leaflet(data = world_var_casos) %>%
+  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+           attribution = paste(
+             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+           )
+  ) %>% addPolygons(weight = 0.1, fillColor = ~greens(var_casos),
+                    color = "green",fillOpacity = 0.9,
+                    smoothFactor = 0.5,
+                    popup = paste0(world_var_casos$name_long,": ", 
+                                   round(world_var_casos$var_casos,2), "%","<br>",
+                                   "População: ", round(world_var_casos$pop_est/1000000,2)," Mi")) %>% 
+  addLegend(position = "bottomright", pal = greensNA, values = ~var_casos, 
+            title="Variação de<br>Novos Casos (%)", na.label = "", 
+            opacity = 1) %>% setView(lat=15, lng=10, zoom=2)
+})
+```
+
 
 ##### Óbitos
 
@@ -371,6 +449,44 @@ renderLeaflet({
 })
 ```
 
+##### Variação de Novos Óbitos
+
+O mapa abaixo mostra a **variação da média de novos óbitos dos últimos 7 dias com relação à media dos 7 dias antecedentes a eles**. Países que obtiveram **menos de 20 novos óbitos** nos últimos 7 dias ou nos 7 dias anteriores a esses foram **desconsiderados** da análise.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+renderLeaflet({
+  
+  rc1 <- colorRampPalette(colors = c("dodgerblue4", "white"), 
+                          space = "Lab")(Mod(as.integer(min(world_var_casos$var_obitos, na.rm = T))))
+
+  ## Make vector of colors for values larger than 0 (180 colors)
+  rc2 <- colorRampPalette(colors = c("white", "firebrick4"), 
+                          space = "Lab")(Mod(as.integer(max(world_var_casos$var_obitos, na.rm = T))))
+
+  ## Combine the two color palettes
+  rampcols <- c(rc1, rc2)
+  
+  greens = colorNumeric(rampcols, domain = world_var_casos$var_obitos)
+  greensNA <- colorNumeric(rampcols, domain = world_var_casos$var_obitos, na.color=rgb(0,0,0,0))
+  leaflet(data = world_var_casos) %>%
+  addTiles('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+           attribution = paste(
+             '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+             '&copy; <a href="http://cartodb.com/attributions">CartoDB</a>'
+           )
+  ) %>% addPolygons(weight = 0.1, fillColor = ~greens(var_obitos),
+                    color = "green",fillOpacity = 0.9,
+                    smoothFactor = 0.5,
+                    popup = paste0(world_var_casos$name_long,": ", 
+                                   round(world_var_casos$var_obitos,2), "%","<br>",
+                                   "População: ", round(world_var_casos$pop_est/1000000,2)," Mi")) %>% 
+  addLegend(position = "bottomright", pal = greensNA, values = ~var_obitos, 
+            title="Variação de<br>Novos Óbitos (%)", na.label = "", 
+            opacity = 1) %>% setView(lat=15, lng=10, zoom=2)
+})
+```
+
+
 ##### Taxa de Letalidade
 
 ```{r}
@@ -420,7 +536,7 @@ renderLeaflet({
 
 ##### Em Tratamento por Habitantes
 
-As informações sobre pacientes recuperados não são divulgadas por todos os países e, para outros, estão desatualizadas e correspondem a contagens de semanas ou até meses atrás. Portanto, **o cálculo dos pacientes em tratamento pode estar comprometido para algumas regiões**. Por conta disso, foi criado um indicador que estima se as informações recentes sobre pacientes recuperados no Repositório da Universidade John Hopkins são atuais, com base nas atualizações dos valores nos últimos 15 dias. Ao clicar em um país no mapa abaixo, ficará visível e em destaque se a taxa calculada foi feita utilizando dados provavelmente <span style="color:DarkGreen">**atualizados**</span>, dados possivelmente <span style="color:DarkOrange">**desatualizados**</span> ou se <span style="color:DarkRed">**não há informação**</span> disponível sobre pacientes recuperados.
+As informações sobre pacientes recuperados não são divulgadas por todos os países e, para outros, estão desatualizadas e correspondem a contagens de semanas ou até meses atrás. Por conta disso, foi criado um indicador que estima se as informações recentes sobre pacientes recuperados no Repositório da Universidade John Hopkins são atuais com base nas atualizações dos valores nos últimos 15 dias. Apenas os países em que a taxa calculada foi feita utilizando dados <span style="color:DarkGreen">**atualizados**</span> foram considerados. Os demais foram desconsiderados por possuírem dados possivelmente <span style="color:DarkOrange">**desatualizados**</span> ou por <span style="color:DarkRed">**não haver informação**</span> disponível sobre pacientes recuperados.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderLeaflet({
