@@ -85,6 +85,8 @@ Para garantir que os filtros realizados resultassem no resultado correto foram f
 
 A partir do momento que os filtros foram feitos, basta agrupar e sumarizar os dados de acordo com o nível de informação desejado. Por exemplo, para conseguir construir um gráfico pra ver a evolução dos casos acumulados diários por região do Brasil, pega-se os dados a nível de região (descrito acima), agrupa-se por região e data e summariza-se os casos acumulados.
 
+Outra análise muito interessante construída compara a média de casos e óbitos nos últimos 7 dias, de acordo com a data-base mais recente, com a média dos 7 dias antecedentes a eles para cada UF brasileira. O intuito é detectar as regiões com crescimento e descrescimento de casos e óbitos nas últimas semanas. Os valores foram dispostos em um mapa interativo ao agregar as informações geométricas que serão detalhadas em sequência. A mesma análise foi feita para os países utilizando os dados mundiais da JHU.
+
 ## Base de Dados da JHU
 
 Para a base de dados da JHU, os dados estão dispostos a nível de província para alguns países e a nível de país para outros. Para igualar o nível das informações, os dados foram agrupados e sumarizados por país e data inicialmente.  
