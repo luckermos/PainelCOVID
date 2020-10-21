@@ -1,6 +1,6 @@
 # PainelCOVID (em progresso)
 Trabalho em progresso na disciplina de Ciência de Dados I - Estatística - UFMG, 2020.  
-Visite nosso [painel](https://luckermos.shinyapps.io/painelcovid/).
+Visite nosso [painel](https://luckermos.shinyapps.io/covidmundo/).
 
 ## Requisitos
 Para reproduzir nosso painel em sua máquina certifique-se de ter instalado todos os pacotes no arquivo *principal.Rmd*.
