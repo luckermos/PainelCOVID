@@ -34,3 +34,20 @@ O painel executa os arquivos .Rmd na seguinte ordem:
 2. *analise_mundo.Rmd*: Relatório sobre a COVID-19 a nível mundial.
 3. *analise_brasil.Rmd*: Relatório sobre a COVID-19 no Brasil.
 4. *analise_uf.Rmd*: Relatório sobre a COVID-19 a nível estadual.
+
+## Contribuidores
+
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/luckermos"><img src="https://avatars.githubusercontent.com/u/49843691?s=100" width="100px;" alt=""/><br /><sub><b>Lucas Emanuel</b></sub></a><br /><a href="https://github.com/luckermos" title="Github"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/git.png" width="20"></a> <a href="https://www.linkedin.com/in/luckermos/" title="LinkedIn"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/linkedin.png" width="20"></a> <a href="mailto:luckermos19@gmail.com" title="E-mail"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/email.png" width="20"></a></td>
+
+<td align="center"><a href="https://github.com/sjlva"><img src="https://avatars.githubusercontent.com/u/63989100?s=100" width="100px;" alt=""/><br /><sub><b>Rafael T. Silva</b></sub></a><br /><a href="https://github.com/sjlva" title="Github"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/git.png" width="20"></a> <a href="https://www.linkedin.com/in/rafael-silva-807a07115/" title="LinkedIn"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/linkedin.png" width="20"></a> <a href="mailto:rafaelsilva@posteo.net" title="E-mail"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/email.png" width="20"></a></td>
+
+<td align="center"><a href="https://github.com/anacps"><img src="https://avatars.githubusercontent.com/u/71646132?s=100" width="100px;" alt=""/><br /><sub><b>Ana Silveira</b></sub></a><br /><a href="https://github.com/anacps" title="Github"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/git.png" width="20"></a> <a href="https://www.linkedin.com/in/ana-clara-pereira-silveira-313065188/" title="LinkedIn"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/linkedin.png" width="20"></a> <a href="mailto::ana.clara_ps@hotmail.com" title="E-mail"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/email.png" width="20"></a></td>
+
+<td align="center"><a href="https://github.com/gabr-md"><img src="https://avatars.githubusercontent.com/u/62065832?s=100" width="100px;" alt=""/><br /><sub><b>Gabriel Maciel</b></sub></a><br /><a href="https://github.com/gabr-md" title="Github"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/git.png" width="20"></a> <a href="https://www.linkedin.com/in/gabriel-maciel-717552158/" title="LinkedIn"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/linkedin.png" width="20"></a> <a href="mailto::gabrielmacieldias@hotmail.com" title="E-mail"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/email.png" width="20"></a></td>
+
+<td align="center"><a href="https://github.com/LuisHVelasquez"><img src="https://avatars.githubusercontent.com/u/62065832?s=100" width="100px;" alt=""/><br /><sub><b>Luis Henrique V.</b></sub></a><br /><a href="https://github.com/LuisHVelasquez" title="Github"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/git.png" width="20"></a> <a href="https://www.linkedin.com/in/luis-henrique-velasquez-3681a6187/" title="LinkedIn"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/linkedin.png" width="20"></a> <a href="mailto::luisvelasquez@ufmg.br" title="E-mail"><img src="https://raw.githubusercontent.com/luckermos/logos/main/social/email.png" width="20"></a></td>
+
+  </tr>
+</table>
