@@ -1,5 +1,7 @@
-# PainelCOVID (em progresso)
-Trabalho em progresso na disciplina de Ciência de Dados I - Estatística - UFMG, 2020.  
+<img src="https://d3043uog1ad1l6.cloudfront.net/uploads/2020/03/photo-1584118624012-df056829fbd0.jpeg" width="500">
+
+# PainelCOVID (Paralizado em 27/10/20)
+Trabalho realizado na disciplina de Ciência de Dados I - Estatística - UFMG, 2020.  
 Visite nosso [painel](https://luckermos.shinyapps.io/covidmundo/).
 
 ## Requisitos
