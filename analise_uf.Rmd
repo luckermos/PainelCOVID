@@ -326,7 +326,7 @@ tags$div(selectizeInput(
   "munic",
   label = "Escolha até 6 Municípios (com mais de 100 mil habitantes) de todo o Brasil:",
   choices = sort(unique(mun$mun_est)),
-  selected = (mun %>% filter(data == max(data)) %>% arrange(desc(casosAcumulado)))$mun_est[1:6],
+  selected = (mun %>% filter(data == max(data)) %>% arrange(desc(casosAcumulado)))$mun_est[1:2],
   width = "1000px", multiple = T, options = list(maxItems = 6)
 ),
 style = "display:inline-block"
@@ -422,7 +422,9 @@ renderPlotly({
     darktheme +
     labs(color = "") +
     theme(legend.position = "bottom") +
-    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+    scale_color_hue(l = 40) + 
+      scale_x_discrete(breaks=c("2020-09","2021-01"),
+        labels=c("2020", "2021")), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -565,7 +567,9 @@ renderPlotly({
     ggtitle("Novos Óbitos por Semana Epidemiológica") +
     labs(color = "") +
     theme(legend.position = "bottom") +
-    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+    scale_color_hue(l = 40) + 
+    scale_x_discrete(breaks=c("2020-09","2021-01"),
+        labels=c("2020", "2021")), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 

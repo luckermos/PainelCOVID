@@ -628,7 +628,16 @@ renderDataTable({
 
 ```{r}
 covid_week <- covid %>%
-  mutate(semanaEpi = epiweek(date)) %>%
+  mutate(semanaEpi = epiweek(date))
+
+covid_week$semanaEpi2 <- paste0(lubridate::year(covid_week$date),"-",formatC(covid_week$semanaEpi, width=2, flag="0"))
+
+covid_week <- covid_week %>% 
+  select(-semanaEpi) %>% 
+  rename(semanaEpi=semanaEpi2) %>% 
+  mutate(semanaEpi=case_when(date=="2021-01-01" ~ "2020-53",
+                             date=="2021-01-02" ~ "2020-53",
+                             TRUE ~ semanaEpi)) %>% 
   group_by(Country_Region, semanaEpi) %>%
   summarise(
     Confirmed = sum(Confirmed),
@@ -637,9 +646,19 @@ covid_week <- covid %>%
     New_Deaths = sum(New_Deaths)
   )
 
+##################################
 
 covid_cont_week <- covid_cont %>%
-  mutate(semanaEpi = epiweek(date)) %>%
+  mutate(semanaEpi = epiweek(date))
+
+covid_cont_week$semanaEpi2 <- paste0(lubridate::year(covid_cont_week$date),"-",formatC(covid_cont_week$semanaEpi, width=2, flag="0"))
+
+covid_cont_week <- covid_cont_week %>% 
+  select(-semanaEpi) %>% 
+  rename(semanaEpi=semanaEpi2) %>% 
+  mutate(semanaEpi=case_when(date=="2021-01-01" ~ "2020-53",
+                             date=="2021-01-02" ~ "2020-53",
+                             TRUE ~ semanaEpi)) %>% 
   group_by(continent, semanaEpi) %>%
   summarise(
     Confirmed = sum(Confirmed),
@@ -648,9 +667,19 @@ covid_cont_week <- covid_cont %>%
     New_Deaths = sum(New_Deaths)
   )
 
+##################################
 
 covid_world_week <- covid_world %>%
-  mutate(semanaEpi = epiweek(date)) %>%
+  mutate(semanaEpi = epiweek(date))
+
+covid_world_week$semanaEpi2 <- paste0(lubridate::year(covid_world_week$date),"-",formatC(covid_world_week$semanaEpi, width=2, flag="0"))
+
+covid_world_week <- covid_world_week %>% 
+  select(-semanaEpi) %>% 
+  rename(semanaEpi=semanaEpi2) %>% 
+  mutate(semanaEpi=case_when(date=="2021-01-01" ~ "2020-53",
+                             date=="2021-01-02" ~ "2020-53",
+                             TRUE ~ semanaEpi)) %>% 
   group_by(semanaEpi) %>%
   summarise(
     Confirmed = sum(Confirmed),
@@ -683,7 +712,7 @@ tags$div(selectizeInput(
   "paises",
   label = "Escolha até 6 Países:",
   choices = sort(unique(covid$Country_Region)),
-  selected = (covid %>% filter(date == max(date)) %>% arrange(desc(Confirmed)))$Country_Region[1:6],
+  selected = (covid %>% filter(date == max(date)) %>% arrange(desc(Confirmed)))$Country_Region[1:2],
   width = "1000px", multiple = T, options = list(maxItems = 6)
 ),
 style = "display:inline-block"
@@ -778,7 +807,9 @@ renderPlotly({
     darktheme +
     labs(color = "") +
     theme(legend.position = "bottom") +
-    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+    scale_color_hue(l = 40) + 
+      scale_x_discrete(breaks=c("2020-04","2021-01"),
+        labels=c("2020", "2021")), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -920,7 +951,9 @@ renderPlotly({
     ggtitle("Novos Óbitos por Semana Epidemiológica") +
     labs(color = "") +
     theme(legend.position = "bottom") +
-    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+    scale_color_hue(l = 40) + 
+    scale_x_discrete(breaks=c("2020-04","2021-01"),
+        labels=c("2020", "2021")), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -1069,7 +1102,9 @@ renderPlotly({
     xlab("Semana Epidemiológica") +
     ylab("Novos Casos (em milhares)") +
     labs(color = "") +
-    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+    scale_color_hue(l = 40) + 
+    scale_x_discrete(breaks=c("2020-04","2021-01"),
+        labels=c("2020", "2021")), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -1163,7 +1198,9 @@ renderPlotly({
     xlab("Semana Epidemiológica") +
     ylab("Novos Óbitos") +
     labs(color = "") +
-    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+    scale_color_hue(l = 40) + 
+    scale_x_discrete(breaks=c("2020-04","2021-01"),
+        labels=c("2020", "2021")), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -1234,13 +1271,14 @@ renderPlotly({
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   ggplotly(ggplot(data = covid_world_week, aes(x = semanaEpi, y = New_Confirmed / 1000)) +
-    geom_point(color = "darkgreen", aes(text = paste0(semanaEpi, ": ", round(New_Confirmed / 1000, 2)))) +
-    geom_line(size = 0.8, color = "darkgreen") +
-    darktheme +
-    ggtitle("") +
-    xlab("") +
-    ylab("Casos Novos (em milhares)") +
-    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+           geom_bar(stat = "identity", fill = "darkgreen", aes(text = paste0(semanaEpi, ": ", round(New_Confirmed / 1000, 2)))) +
+           darktheme +
+           ggtitle("") +
+           xlab("") +
+           ylab("Casos Novos (em milhares)") +
+           scale_color_hue(l = 40) +
+           scale_x_discrete(breaks=c("2020-04","2021-01"),
+                            labels=c("2020", "2021")), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
@@ -1312,13 +1350,14 @@ renderPlotly({
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 renderPlotly({
   ggplotly(ggplot(data = covid_world_week, aes(x = semanaEpi, y = New_Deaths / 1000)) +
-    geom_point(color = "darkred", aes(text = paste0(semanaEpi, ": ", round(New_Deaths / 1000, 2)))) +
-    geom_line(size = 0.8, color = "darkred") +
-    darktheme +
-    ggtitle("") +
-    xlab("") +
-    ylab("Óbitos (em milhares)") +
-    scale_color_hue(l = 40), tooltip = "text") %>% layout(hovermode = "x unified")
+           geom_bar(stat = "identity", fill = "darkred", aes(text = paste0(semanaEpi, ": ", round(New_Deaths / 1000, 2)))) +
+           darktheme +
+           ggtitle("") +
+           xlab("") +
+           ylab("Óbitos (em milhares)") +
+           scale_color_hue(l = 40) +
+           scale_x_discrete(breaks=c("2020-04","2021-01"),
+                            labels=c("2020", "2021")), tooltip = "text") %>% layout(hovermode = "x unified")
 })
 ```
 
