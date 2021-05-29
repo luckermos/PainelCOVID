@@ -1,7 +1,7 @@
 download_dataset <- function(radical = "jhu") {
   radical <- ifelse(radical == "ms_br", "ms", radical)
   url <- paste0(
-    "https://github.com/sjlva/Covid19BR/blob/master/rds/covid_",
+    "https://github.com/luckermos/COVID19DATA/blob/main/actual_data/covid_",
     radical,
     ".rds?raw=true")
   df <- readr::read_rds(url(url))
@@ -10,7 +10,8 @@ download_dataset <- function(radical = "jhu") {
 
 datasets <- function() {
   # Inserir aqui nome do dataset, caso outro seja adcionado
-  datasets <- c("jhu", "google", "ms_br")
+  datasets <- c("jhu", #"google", 
+                "ms_br")
   return(datasets)
 }
 

@@ -25,8 +25,8 @@ brasil <- readRDS("dados/brasil.rds")
 
 # Agrupando dados por Estado
 est <- covidbr %>%
-  filter(estado != "") %>%
-  filter(municipio == "") %>%
+  filter(!is.na(estado)) %>%
+  filter(is.na(municipio)) %>%
   group_by(regiao, estado, coduf, data) %>%
   summarise(
     semanaEpi = max(semanaEpi),
