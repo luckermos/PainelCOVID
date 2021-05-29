@@ -1,11 +1,15 @@
 <img src="https://d3043uog1ad1l6.cloudfront.net/uploads/2020/03/photo-1584118624012-df056829fbd0.jpeg" width="500">
 
-# PainelCOVID (Paralizado em 27/10/20)
+# PainelCOVID (Atualizado em 29/05/21)
 Trabalho realizado na disciplina de Ciência de Dados I - Estatística - UFMG, 2020.  
-Visite nosso [painel](https://luckermos.shinyapps.io/covidmundo/).
 
 ## Requisitos
-Para executar o painel certifique-se de ter instalado todos os pacotes do arquivo *principal.Rmd*.
+- Para executar o painel certifique-se de ter instalado todos os pacotes do arquivo *principal.Rmd*.
+- É recomendado que se tenha ao menos 4gb de memória RAM para executar o painel localmente.
+
+## Versão Web
+Uma versão resumida pode ser acessada pela web [aqui](https://luckermos.shinyapps.io/covidmundo/).
+Esta versão pode apresentar algum problema de limite de memória RAM excedido pela limitação da versão gratuita do *shinyapps*.
 
 ## Como reproduzir localmente
 Para executar o painel localmente execute o arquivo *principal.Rmd*.
@@ -26,7 +30,6 @@ O projeto está estruturado da seguinte forma:
 - Na pasta *www*: *css* que aplica estilo ao painel.
 - No diretório principal estão 4 arquivos em *Rmarkdown*, que operam de forma independente, facilitando o trabalho em equipe.
 - Na pasta *Relatório Descritiva*: relatório descritivo.
-- Na pasta *cronjob*: scripts necessários para realizar o download automático dos banco de dados citados.
 
 ## Arquivos .Rmd
 O painel executa os arquivos .Rmd na seguinte ordem:
